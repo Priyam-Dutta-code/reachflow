@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiFetch, getToken } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 const PLANS = [
   {
@@ -53,7 +53,7 @@ export default function PricingPage() {
   }, []);
 
   const checkout = async (planId: string) => {
-    if (!getToken()) { router.push("/login"); return; }
+    const supabase = (await import("@/lib/supabase")).createClient(); const { data: { session } } = await supabase.auth.getSession(); if (!session) { router.push("/login"); return; }
     if (planId === "free") { router.push("/dashboard"); return; }
     setLoading(planId);
     try {
