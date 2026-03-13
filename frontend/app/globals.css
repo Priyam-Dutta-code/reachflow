@@ -2,24 +2,193 @@
 @tailwind components;
 @tailwind utilities;
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html, body {
-  background: #07070d;
-  color: #e8e8f0;
-  font-family: 'DM Sans', sans-serif;
-  -webkit-font-smoothing: antialiased;
+:root {
+  --bg: #040814;
+  --bg-elevated: rgba(10, 18, 32, 0.82);
+  --surface: rgba(10, 18, 32, 0.72);
+  --surface-strong: rgba(14, 24, 40, 0.94);
+  --surface-soft: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.09);
+  --text: #ecf2ff;
+  --muted: rgba(236, 242, 255, 0.66);
+  --soft: rgba(236, 242, 255, 0.45);
+  --accent: #8bf3d8;
+  --accent-strong: #48e1ff;
+  --accent-warm: #ffbb8b;
+  --danger: #ff8c8c;
+  --success: #74f3ba;
 }
 
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 0% 0%, rgba(72, 225, 255, 0.16), transparent 26%),
+      radial-gradient(circle at 80% 0%, rgba(255, 187, 139, 0.16), transparent 24%),
+      radial-gradient(circle at 50% 80%, rgba(139, 243, 216, 0.12), transparent 30%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--font-body), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgba(139, 243, 216, 0.22);
+    color: white;
+  }
 }
-.fade-up   { animation: fadeUp 0.45s ease both; }
-.fade-up-1 { animation: fadeUp 0.45s 0.08s ease both; }
-.fade-up-2 { animation: fadeUp 0.45s 0.16s ease both; }
-.fade-up-3 { animation: fadeUp 0.45s 0.24s ease both; }
+
+@layer components {
+  .app-shell {
+    @apply relative min-h-screen overflow-hidden;
+  }
+
+  .app-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 120px 120px;
+    mask-image: radial-gradient(circle at center, black 42%, transparent 85%);
+    opacity: 0.2;
+    pointer-events: none;
+  }
+
+  .shell-card {
+    @apply rounded-[28px] border border-white/10 bg-[rgba(11,19,34,0.78)] backdrop-blur-xl;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.32);
+  }
+
+  .glass-card {
+    @apply rounded-[26px] border border-white/10 bg-white/[0.04] backdrop-blur-xl;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 20px 60px rgba(0, 0, 0, 0.22);
+  }
+
+  .hero-grid {
+    @apply mx-auto grid w-full max-w-7xl gap-10 px-5 pb-20 pt-8 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-14 lg:px-10 lg:pt-14;
+  }
+
+  .section-wrap {
+    @apply mx-auto w-full max-w-7xl px-5 py-16 md:px-8 lg:px-10 lg:py-24;
+  }
+
+  .section-label {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70;
+  }
+
+  .headline {
+    @apply font-display text-4xl font-bold tracking-[-0.05em] text-white md:text-6xl lg:text-[5.35rem];
+    line-height: 0.95;
+  }
+
+  .subheadline {
+    @apply max-w-2xl text-base leading-7 text-white/70 md:text-lg md:leading-8;
+  }
+
+  .primary-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-transparent bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] px-6 py-3 text-sm font-semibold text-slate-950 transition-transform duration-300 hover:-translate-y-0.5;
+    box-shadow: 0 12px 40px rgba(72, 225, 255, 0.26);
+  }
+
+  .secondary-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white/80 transition-colors duration-300 hover:bg-white/10;
+  }
+
+  .metric-card {
+    @apply glass-card p-6;
+  }
+
+  .metric-label {
+    @apply text-xs uppercase tracking-[0.28em] text-white/45;
+  }
+
+  .metric-value {
+    @apply mt-4 font-display text-4xl font-semibold tracking-[-0.04em] text-white;
+  }
+
+  .nav-chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 transition-all duration-300 hover:border-white/20 hover:bg-white/10 hover:text-white;
+  }
+
+  .field {
+    @apply h-12 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition duration-300 placeholder:text-white/35 focus:border-[#8bf3d8]/70 focus:bg-white/10 focus:ring-2 focus:ring-[#8bf3d8]/20;
+  }
+
+  .textarea-field {
+    @apply rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition duration-300 placeholder:text-white/35 focus:border-[#8bf3d8]/70 focus:bg-white/10 focus:ring-2 focus:ring-[#8bf3d8]/20;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em];
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display), sans-serif;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .glow-border {
+    position: relative;
+  }
+
+  .glow-border::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(139, 243, 216, 0.55), rgba(72, 225, 255, 0.2), rgba(255, 187, 139, 0.45));
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    z-index: -1;
+  }
+
+  .glow-border:hover::before {
+    opacity: 1;
+  }
+
+  .ambient-line {
+    background: linear-gradient(90deg, rgba(139, 243, 216, 0), rgba(139, 243, 216, 0.66), rgba(72, 225, 255, 0));
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}

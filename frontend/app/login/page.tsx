@@ -1,98 +1,117 @@
 "use client";
-import { useState, Suspense } from "react";
+
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+
 import { createClient } from "@/lib/supabase";
 
-const inp: React.CSSProperties = {
-  width: "100%", background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12,
-  padding: "12px 16px", fontSize: 14, color: "#e8e8f0",
-  outline: "none", fontFamily: "DM Sans, sans-serif",
-};
-
 function LoginForm() {
-  const [email,    setEmail]    = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error,    setError]    = useState("");
-  const [loading,  setLoading]  = useState(false);
-  const router       = useRouter();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
   const searchParams = useSearchParams();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setError("");
 
     const supabase = createClient();
-    const { data, error: err } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (err) {
-      // Show the exact Supabase error (e.g. "Email not confirmed", "Invalid login credentials")
-      setError(err.message);
+    if (signInError) {
+      setError(signInError.message);
       setLoading(false);
       return;
     }
 
-    // Session is now in localStorage. onAuthStateChange in AuthProvider
-    // will pick it up and update context. Navigate to dashboard.
-    const next = searchParams.get("next") ?? "/dashboard";
-    router.replace(next); // replace so back-button doesn't go to /login
+    const nextPath = searchParams.get("next") ?? "/dashboard";
+    router.replace(nextPath);
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#07070d", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "DM Sans, sans-serif" }}>
-      <div style={{ width: "100%", maxWidth: 380 }}>
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", color: "white", marginBottom: 20 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#7c3aed,#4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne,sans-serif", fontWeight: 700, fontSize: 14 }}>R</div>
-            <span style={{ fontFamily: "Syne,sans-serif", fontWeight: 700, fontSize: 16 }}>ReachFlow</span>
-          </Link>
-          <h1 style={{ fontFamily: "Syne,sans-serif", fontSize: 24, fontWeight: 700, marginBottom: 6, color: "#e8e8f0" }}>Welcome back</h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)" }}>Log in to your account</p>
+    <div className="app-shell grid min-h-screen place-items-center px-4 py-10">
+      <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="glass-card hidden flex-col justify-between p-10 lg:flex">
+          <div>
+            <div className="section-label">Welcome back</div>
+            <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em]">
+              Step into your outreach control room.
+            </h1>
+            <p className="mt-5 max-w-lg text-base leading-8 text-white/65">
+              ReachFlow keeps prospecting, campaign setup, and follow-up automation inside one focused workflow.
+            </p>
+          </div>
+          <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
+            <div className="flex items-center gap-3 text-sm text-white/75">
+              <ShieldCheck className="h-5 w-5 text-[var(--accent)]" />
+              Protected routes, verified payments, encrypted stored secrets.
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input
-            type="email" placeholder="Email address" value={email}
-            onChange={e => setEmail(e.target.value)} required
-            style={inp} autoComplete="email"
-          />
-          <input
-            type="password" placeholder="Password" value={password}
-            onChange={e => setPassword(e.target.value)} required
-            style={inp} autoComplete="current-password"
-          />
+        <div className="shell-card mx-auto w-full max-w-xl p-6 md:p-8">
+          <div className="mb-8">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-display text-lg font-bold text-slate-950">
+                R
+              </div>
+              <div>
+                <div className="font-display text-lg font-semibold">ReachFlow</div>
+                <div className="text-xs uppercase tracking-[0.28em] text-white/45">AI outreach SaaS</div>
+              </div>
+            </Link>
+            <h2 className="mt-8 font-display text-4xl font-semibold tracking-[-0.05em]">Log in</h2>
+            <p className="mt-3 text-sm leading-7 text-white/65">
+              Pick up where you left off and continue building campaigns that are ready to ship.
+            </p>
+          </div>
 
-          {error && (
-            <div style={{ padding: "10px 13px", borderRadius: 10, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171", fontSize: 13, lineHeight: 1.5 }}>
-              {error === "Email not confirmed"
-                ? "Please check your inbox and confirm your email before logging in."
-                : error}
-            </div>
-          )}
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <input
+              autoComplete="email"
+              className="field w-full"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Email address"
+              required
+              type="email"
+              value={email}
+            />
+            <input
+              autoComplete="current-password"
+              className="field w-full"
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Password"
+              required
+              type="password"
+              value={password}
+            />
 
-          <button
-            type="submit" disabled={loading}
-            style={{
-              background: "#7c3aed", color: "#fff", border: "none", borderRadius: 12,
-              padding: "13px", fontSize: 14, fontWeight: 600,
-              cursor: loading ? "wait" : "pointer",
-              fontFamily: "DM Sans, sans-serif", opacity: loading ? 0.65 : 1,
-              marginTop: 4,
-            }}
-          >
-            {loading ? "Logging in…" : "Log in →"}
-          </button>
-        </form>
+            {error && (
+              <div className="rounded-3xl border border-[rgba(255,140,140,0.24)] bg-[rgba(255,140,140,0.08)] px-4 py-3 text-sm leading-6 text-[var(--danger)]">
+                {error === "Email not confirmed"
+                  ? "Please confirm your email from the Supabase email before logging in."
+                  : error}
+              </div>
+            )}
 
-        <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "rgba(255,255,255,0.3)" }}>
-          No account?{" "}
-          <Link href="/signup" style={{ color: "#a78bfa", textDecoration: "none" }}>Sign up free</Link>
-        </p>
+            <button className="primary-button w-full !justify-center !py-3.5" disabled={loading} type="submit">
+              {loading ? "Signing in..." : "Enter dashboard"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </form>
+
+          <p className="mt-6 text-sm text-white/55">
+            New here?{" "}
+            <Link className="text-[var(--accent)] transition hover:text-white" href="/signup">
+              Create a free account
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

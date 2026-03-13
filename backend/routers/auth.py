@@ -1,33 +1,29 @@
 """
-routers/auth.py — Supabase JWT verification + auto user-creation
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-KEY FIX: get_current_user() now auto-creates a DB row on first login.
-This means the "Account not found" error can never happen — any valid
-Supabase JWT immediately gets a working account.
-
-Token verification uses PyJWKClient (fetches Supabase's public JWKS)
-which supports both old HS256 and new ES256 (ECC P-256) tokens.
+routers/auth.py - Supabase JWT verification + user profile management.
 """
-import jwt
-from jwt import PyJWKClient
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Header
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
-from config import SUPABASE_URL, SUPABASE_JWT_SECRET
-from database import get_db, User, PlanType
+import jwt
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from jwt import PyJWKClient
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy.orm import Session
+
+from config import SUPABASE_JWT_SECRET, SUPABASE_URL
+from database import PlanType, User, get_db
+from security import enforce_rate_limit, secret_manager
 
 router = APIRouter()
 
 PLAN_DEFAULTS = {
-    PlanType.free:     {"leads_quota": 100,    "credits": 50},
-    PlanType.pro:      {"leads_quota": 1000,   "credits": 500},
-    PlanType.agency:   {"leads_quota": 999999, "credits": 2000},
+    PlanType.free: {"leads_quota": 100, "credits": 50},
+    PlanType.pro: {"leads_quota": 1000, "credits": 500},
+    PlanType.agency: {"leads_quota": 999999, "credits": 2000},
     PlanType.lifetime: {"leads_quota": 999999, "credits": 999999},
 }
 
 _jwks_client: Optional[PyJWKClient] = None
+
 
 def _get_jwks_client() -> Optional[PyJWKClient]:
     global _jwks_client
@@ -37,71 +33,80 @@ def _get_jwks_client() -> Optional[PyJWKClient]:
                 f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json",
                 cache_keys=True,
             )
-        except Exception as e:
-            print(f"[auth] JWKS client init failed: {e}")
+        except Exception as exc:
+            print(f"[auth] JWKS client init failed: {exc}")
     return _jwks_client
 
 
-def verify_token(authorization: str = Header(...)) -> dict:
-    """Verify Supabase JWT. Tries JWKS (ES256) first, falls back to HS256 secret."""
+def verify_token(authorization: str | None = Header(default=None)) -> dict:
+    if not authorization:
+        raise HTTPException(401, "Missing authorization token")
+
     try:
         token = authorization.removeprefix("Bearer ").strip()
 
-        # Strategy 1 — JWKS (handles ES256 and any future key type)
         jwks = _get_jwks_client()
         if jwks:
             try:
                 key = jwks.get_signing_key_from_jwt(token)
                 return jwt.decode(
-                    token, key.key,
+                    token,
+                    key.key,
                     algorithms=["HS256", "RS256", "ES256"],
                     options={"verify_aud": False},
                 )
-            except Exception as e:
-                print(f"[auth] JWKS verify failed ({e}), trying legacy secret")
+            except Exception as exc:
+                print(f"[auth] JWKS verify failed ({exc}), trying legacy secret")
 
-        # Strategy 2 — Legacy HS256 secret
         if SUPABASE_JWT_SECRET:
             return jwt.decode(
-                token, SUPABASE_JWT_SECRET,
+                token,
+                SUPABASE_JWT_SECRET,
                 algorithms=["HS256"],
                 options={"verify_aud": False},
             )
 
         raise HTTPException(401, "No JWT verification method configured")
-
     except jwt.ExpiredSignatureError:
-        raise HTTPException(401, "Session expired — please log in again")
+        raise HTTPException(401, "Session expired. Please log in again.")
     except HTTPException:
         raise
-    except Exception as e:
-        print(f"[auth] Token verification error: {e}")
+    except Exception as exc:
+        print(f"[auth] Token verification error: {exc}")
         raise HTTPException(401, "Invalid token")
+
+
+def _migrate_sensitive_fields(user: User, db: Session) -> None:
+    changed = False
+    if secret_manager.needs_migration(user.gmail_password):
+        user.gmail_password = secret_manager.encrypt(user.gmail_password)
+        changed = True
+    if secret_manager.needs_migration(user.groq_api_key):
+        user.groq_api_key = secret_manager.encrypt(user.groq_api_key)
+        changed = True
+    if changed:
+        db.commit()
+        db.refresh(user)
 
 
 def get_current_user(
     payload: dict = Depends(verify_token),
-    db: Session   = Depends(get_db),
+    db: Session = Depends(get_db),
 ) -> User:
-    """
-    Get or AUTO-CREATE the user row.
-    This is the key fix: a valid Supabase JWT always gets a DB record,
-    even if onboarding was never completed (e.g. after email confirmation).
-    """
     user_id = payload.get("sub")
-    email   = payload.get("email", "")
+    email = payload.get("email", "")
     if not user_id:
         raise HTTPException(401, "Invalid token payload")
 
     user = db.query(User).filter(User.id == user_id).first()
-
     if not user:
-        # First time this user hits the backend — create their row automatically
         defaults = PLAN_DEFAULTS[PlanType.free]
+        metadata = payload.get("user_metadata") or {}
+        preferred_name = metadata.get("name") or email.split("@")[0] or "User"
         user = User(
             id=user_id,
             email=email,
-            name=email.split("@")[0],   # default name until onboarding
+            name=preferred_name,
             plan=PlanType.free,
             credits=defaults["credits"],
             leads_quota=defaults["leads_quota"],
@@ -113,36 +118,94 @@ def get_current_user(
         db.refresh(user)
         print(f"[auth] Auto-created user row for {email}")
 
+    _migrate_sensitive_fields(user, db)
     return user
 
 
-# ── Schemas ───────────────────────────────────────────────
+class _ProfileBase(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
 
-class OnboardRequest(BaseModel):
-    name:            str
-    sender_name:     str
-    sender_email:    str
-    sender_phone:    Optional[str] = ""
-    sender_linkedin: Optional[str] = ""
-    sender_profile:  Optional[str] = ""
-    sender_role:     Optional[str] = "Professional"
-    gmail_password:  Optional[str] = ""
-    groq_api_key:    Optional[str] = ""
+    name: Optional[str] = Field(default=None, min_length=2, max_length=80)
+    sender_name: Optional[str] = Field(default=None, min_length=2, max_length=80)
+    sender_email: Optional[str] = Field(default=None, min_length=5, max_length=255)
+    sender_phone: Optional[str] = Field(default=None, max_length=32)
+    sender_linkedin: Optional[str] = Field(default=None, max_length=255)
+    sender_profile: Optional[str] = Field(default=None, max_length=800)
+    sender_role: Optional[str] = Field(default=None, max_length=80)
+    gmail_password: Optional[str] = Field(default=None, max_length=255)
+    groq_api_key: Optional[str] = Field(default=None, max_length=255)
+
+    @field_validator("sender_email")
+    @classmethod
+    def validate_email(cls, value: Optional[str]) -> Optional[str]:
+        if value and "@" not in value:
+            raise ValueError("Enter a valid sender email address")
+        return value
+
+    @field_validator("sender_linkedin")
+    @classmethod
+    def validate_linkedin(cls, value: Optional[str]) -> Optional[str]:
+        if value and "linkedin.com" not in value:
+            raise ValueError("Enter a valid LinkedIn URL")
+        return value
 
 
-class ProfileUpdate(BaseModel):
-    name:            Optional[str] = None
-    sender_name:     Optional[str] = None
-    sender_email:    Optional[str] = None
-    sender_phone:    Optional[str] = None
-    sender_linkedin: Optional[str] = None
-    sender_profile:  Optional[str] = None
-    sender_role:     Optional[str] = None
-    gmail_password:  Optional[str] = None
-    groq_api_key:    Optional[str] = None
+class OnboardRequest(_ProfileBase):
+    name: str = Field(min_length=2, max_length=80)
+    sender_name: str = Field(min_length=2, max_length=80)
+    sender_email: str = Field(min_length=5, max_length=255)
+    sender_phone: str = Field(default="")
+    sender_linkedin: str = Field(default="")
+    sender_profile: str = Field(default="")
+    sender_role: str = Field(default="Professional", max_length=80)
+    gmail_password: str = Field(default="")
+    groq_api_key: str = Field(default="")
 
 
-# ── Routes ────────────────────────────────────────────────
+class ProfileUpdate(_ProfileBase):
+    pass
+
+
+def _update_sensitive_fields(current_user: User, fields: dict) -> None:
+    for field, value in fields.items():
+        if field in {"gmail_password", "groq_api_key"}:
+            setattr(current_user, field, secret_manager.encrypt(value))
+        else:
+            setattr(current_user, field, value)
+
+
+def _user_dict(user: User) -> dict:
+    missing_setup = []
+    if not user.sender_name:
+        missing_setup.append("sender_profile")
+    if not user.sender_email:
+        missing_setup.append("sender_email")
+    if not user.gmail_password:
+        missing_setup.append("gmail_connection")
+    if not (user.groq_api_key or user.sender_profile):
+        missing_setup.append("ai_personalization")
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "plan": user.plan.value if hasattr(user.plan, "value") else user.plan,
+        "credits": user.credits,
+        "leads_quota": user.leads_quota,
+        "leads_used": user.leads_used,
+        "emails_sent": user.emails_sent,
+        "sender_name": user.sender_name,
+        "sender_email": user.sender_email,
+        "sender_phone": user.sender_phone,
+        "sender_linkedin": user.sender_linkedin,
+        "sender_role": user.sender_role,
+        "sender_profile": user.sender_profile,
+        "onboarded": bool(user.sender_name and user.sender_email),
+        "has_gmail_password": bool(user.gmail_password),
+        "has_groq_api_key": bool(user.groq_api_key),
+        "missing_setup": missing_setup,
+    }
+
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
@@ -152,42 +215,30 @@ def get_me(current_user: User = Depends(get_current_user)):
 @router.post("/onboard")
 def onboard(
     body: OnboardRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session        = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    current_user.name            = body.name
-    current_user.sender_name     = body.sender_name
-    current_user.sender_email    = body.sender_email
-    current_user.sender_phone    = body.sender_phone
-    current_user.sender_linkedin = body.sender_linkedin
-    current_user.sender_profile  = body.sender_profile
-    current_user.sender_role     = body.sender_role
-    current_user.gmail_password  = body.gmail_password
-    current_user.groq_api_key    = body.groq_api_key
+    enforce_rate_limit(request, "auth_onboard", limit=8, window_seconds=60, identifier=current_user.id)
+    _update_sensitive_fields(current_user, body.model_dump())
     db.commit()
+    db.refresh(current_user)
     return {"message": "Onboarded", "user": _user_dict(current_user)}
 
 
 @router.patch("/profile")
 def update_profile(
     body: ProfileUpdate,
+    request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session        = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    for field, value in body.dict(exclude_none=True).items():
-        setattr(current_user, field, value)
+    enforce_rate_limit(request, "auth_profile", limit=20, window_seconds=60, identifier=current_user.id)
+    payload = body.model_dump(exclude_none=True)
+    if not payload:
+        return {"message": "No changes submitted", "user": _user_dict(current_user)}
+
+    _update_sensitive_fields(current_user, payload)
     db.commit()
+    db.refresh(current_user)
     return {"message": "Updated", "user": _user_dict(current_user)}
-
-
-def _user_dict(u: User) -> dict:
-    return {
-        "id": u.id, "email": u.email, "name": u.name,
-        "plan": u.plan, "credits": u.credits,
-        "leads_quota": u.leads_quota, "leads_used": u.leads_used,
-        "emails_sent": u.emails_sent,
-        "sender_name": u.sender_name, "sender_email": u.sender_email,
-        "sender_phone": u.sender_phone, "sender_linkedin": u.sender_linkedin,
-        "sender_role": u.sender_role,
-        "onboarded": bool(u.sender_name),
-    }

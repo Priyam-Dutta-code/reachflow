@@ -1,141 +1,290 @@
 "use client";
+
+import { ArrowRight, PauseCircle, PlayCircle, Plus, Sparkles, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
+
+import { Reveal } from "@/components/Reveal";
 import Shell from "@/components/Shell";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
-  draft:    { color: "rgba(255,255,255,0.3)",  bg: "rgba(255,255,255,0.06)" },
-  active:   { color: "#34d399",                bg: "rgba(52,211,153,0.12)"  },
-  paused:   { color: "#fbbf24",                bg: "rgba(251,191,36,0.12)"  },
-  complete: { color: "#60a5fa",                bg: "rgba(96,165,250,0.12)"  },
-};
-const inp: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 11, padding: "10px 13px", fontSize: 13, color: "#e8e8f0",
-  outline: "none", fontFamily: "DM Sans, sans-serif",
+const STATUS_STYLE: Record<string, string> = {
+  draft: "border-white/10 bg-white/5 text-white/70",
+  active: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+  paused: "border-amber-400/20 bg-amber-400/10 text-amber-200",
+  complete: "border-sky-400/20 bg-sky-400/10 text-sky-200",
 };
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [showNew,   setShowNew]   = useState(false);
-  const [launching, setLaunching] = useState<number | null>(null);
-  const [apiError,  setApiError]  = useState("");
-  const [form, setForm] = useState({ name: "", emails_per_day: 50, send_time: "09:00", follow_up_days: 5 });
+  const [showNew, setShowNew] = useState(false);
+  const [launchingId, setLaunchingId] = useState<number | null>(null);
+  const [error, setError] = useState("");
   const { session } = useAuth();
 
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    emails_per_day: 40,
+    send_time: "09:00",
+    follow_up_days: 5,
+  });
+
   const load = async () => {
-    try { setCampaigns(await apiFetch("/api/campaigns/")); setApiError(""); }
-    catch (e: any) { setApiError(e.message); }
+    try {
+      const data = await apiFetch("/api/campaigns/");
+      setCampaigns(data ?? []);
+      setError("");
+    } catch (requestError: any) {
+      setError(requestError.message);
+    }
   };
 
-  useEffect(() => { if (session) load(); }, [session]);
+  useEffect(() => {
+    if (session) {
+      load();
+    }
+  }, [session]);
 
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try { await apiFetch("/api/campaigns/", { method: "POST", body: JSON.stringify(form) }); setShowNew(false); load(); }
-    catch (e: any) { setApiError(e.message); }
+  const createCampaign = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await apiFetch("/api/campaigns/", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      setShowNew(false);
+      setForm({
+        name: "",
+        description: "",
+        emails_per_day: 40,
+        send_time: "09:00",
+        follow_up_days: 5,
+      });
+      await load();
+    } catch (requestError: any) {
+      setError(requestError.message);
+    }
   };
 
-  const sendNow = async (id: number) => {
-    setLaunching(id);
-    try { await apiFetch(`/api/campaigns/${id}/send-now`, { method: "POST" }); load(); }
-    catch (e: any) { setApiError(e.message); }
-    finally { setLaunching(null); }
+  const triggerSend = async (campaignId: number) => {
+    setLaunchingId(campaignId);
+    try {
+      await apiFetch(`/api/campaigns/${campaignId}/send-now`, { method: "POST" });
+      await load();
+    } catch (requestError: any) {
+      setError(requestError.message);
+    } finally {
+      setLaunchingId(null);
+    }
   };
 
-  const toggle = async (c: any) => {
-    const s = c.status === "active" ? "paused" : "active";
-    try { await apiFetch(`/api/campaigns/${c.id}`, { method: "PATCH", body: JSON.stringify({ status: s }) }); load(); }
-    catch (e: any) { setApiError(e.message); }
+  const toggleStatus = async (campaign: any) => {
+    const status = campaign.status === "active" ? "paused" : "active";
+    try {
+      await apiFetch(`/api/campaigns/${campaign.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      await load();
+    } catch (requestError: any) {
+      setError(requestError.message);
+    }
   };
 
-  const del = async (id: number) => {
-    if (!confirm("Delete this campaign?")) return;
-    try { await apiFetch(`/api/campaigns/${id}`, { method: "DELETE" }); load(); }
-    catch (e: any) { setApiError(e.message); }
+  const deleteCampaign = async (campaignId: number) => {
+    try {
+      await apiFetch(`/api/campaigns/${campaignId}`, { method: "DELETE" });
+      await load();
+    } catch (requestError: any) {
+      setError(requestError.message);
+    }
   };
 
   return (
     <Shell>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
-        <h1 style={{ fontFamily: "Syne,sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }}>Campaigns</h1>
-        <button onClick={() => setShowNew(true)} style={{ padding: "9px 18px", borderRadius: 11, background: "#7c3aed", color: "#fff", border: "none", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>
-          + New Campaign
-        </button>
-      </div>
-
-      {apiError && (
-        <div style={{ marginBottom: 16, padding: "12px 16px", borderRadius: 12, background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", fontSize: 13 }}>
-          ⚠ {apiError} — Check <code>SUPABASE_JWT_SECRET</code> in backend <code>.env</code>
-        </div>
-      )}
-
-      {showNew && (
-        <form onSubmit={create} style={{ borderRadius: 18, border: "1px solid rgba(124,58,237,0.25)", background: "rgba(124,58,237,0.06)", padding: 24, marginBottom: 20 }}>
-          <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 16 }}>New Campaign</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
-            <input placeholder="Campaign name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required style={inp} />
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
-                Emails/day <input type="number" value={form.emails_per_day} onChange={e => setForm({ ...form, emails_per_day: +e.target.value })} style={{ ...inp, width: 80 }} />
-              </label>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
-                Send time <input type="time" value={form.send_time} onChange={e => setForm({ ...form, send_time: e.target.value })} style={inp} />
-              </label>
-              <label style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
-                Follow-up after <input type="number" value={form.follow_up_days} onChange={e => setForm({ ...form, follow_up_days: +e.target.value })} style={{ ...inp, width: 70 }} /> days
-              </label>
+      <div className="space-y-6">
+        <Reveal>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <div className="section-label">Campaign control</div>
+              <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
+                Turn attached leads into launch-ready campaigns.
+              </h1>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
+                Campaigns now highlight eligible leads and show when a workflow is missing the inputs it needs to send
+                cleanly.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/leads" className="secondary-button">
+                Attach leads
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <button className="primary-button" onClick={() => setShowNew(true)} type="button">
+                <Plus className="h-4 w-4" />
+                New campaign
+              </button>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button type="submit" style={{ padding: "9px 20px", borderRadius: 11, background: "#7c3aed", color: "#fff", border: "none", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>Create</button>
-            <button type="button" onClick={() => setShowNew(false)} style={{ padding: "9px 20px", borderRadius: 11, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>Cancel</button>
-          </div>
-        </form>
-      )}
+        </Reveal>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {campaigns.map(c => {
-          const st       = STATUS_STYLE[c.status] ?? STATUS_STYLE.draft;
-          const pct      = c.total_leads > 0 ? Math.round(c.total_sent / c.total_leads * 100) : 0;
-          const replyPct = c.total_sent  > 0 ? ((c.total_replied / c.total_sent) * 100).toFixed(1) : "0";
-          return (
-            <div key={c.id} style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)", padding: 22 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                    <span style={{ fontWeight: 500, fontSize: 15 }}>{c.name}</span>
-                    <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 9px", borderRadius: 99, background: st.bg, color: st.color }}>{c.status}</span>
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 20px", fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 14 }}>
-                    <span>{c.total_leads} leads</span><span>{c.total_sent} sent</span>
-                    <span>{c.total_replied} replied</span><span>{replyPct}% reply rate</span>
-                    <span>{c.emails_per_day}/day · {c.send_time}</span>
-                  </div>
-                  <div style={{ height: 4, borderRadius: 99, background: "rgba(255,255,255,0.06)" }}>
-                    <div style={{ height: "100%", borderRadius: 99, background: "linear-gradient(90deg,#7c3aed,#4f46e5)", width: `${pct}%`, transition: "width 0.5s" }} />
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                  {c.status !== "complete" && <>
-                    <button onClick={() => sendNow(c.id)} disabled={launching === c.id} style={{ padding: "7px 14px", borderRadius: 9, background: "rgba(52,211,153,0.12)", color: "#34d399", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans, sans-serif", opacity: launching === c.id ? 0.5 : 1 }}>
-                      {launching === c.id ? "…" : "▶ Send"}
-                    </button>
-                    <button onClick={() => toggle(c)} style={{ padding: "7px 12px", borderRadius: 9, background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "none", fontSize: 12, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>
-                      {c.status === "active" ? "⏸" : "▶"}
-                    </button>
-                  </>}
-                  <button onClick={() => del(c.id)} style={{ padding: "7px 10px", borderRadius: 9, background: "transparent", color: "rgba(248,113,113,0.5)", border: "none", fontSize: 12, cursor: "pointer" }}>✕</button>
-                </div>
+        {error && (
+          <div className="rounded-[24px] border border-[rgba(255,140,140,0.24)] bg-[rgba(255,140,140,0.08)] px-5 py-4 text-sm leading-7 text-[var(--danger)]">
+            {error}
+          </div>
+        )}
+
+        {showNew && (
+          <Reveal>
+            <form className="glass-card grid gap-4 p-6 md:grid-cols-2" onSubmit={createCampaign}>
+              <input
+                className="field w-full md:col-span-2"
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                placeholder="Campaign name"
+                required
+                value={form.name}
+              />
+              <textarea
+                className="textarea-field min-h-[130px] w-full md:col-span-2"
+                onChange={(event) => setForm({ ...form, description: event.target.value })}
+                placeholder="What is this campaign trying to accomplish?"
+                value={form.description}
+              />
+              <input
+                className="field w-full"
+                min={1}
+                onChange={(event) => setForm({ ...form, emails_per_day: Number(event.target.value) })}
+                type="number"
+                value={form.emails_per_day}
+              />
+              <input
+                className="field w-full"
+                onChange={(event) => setForm({ ...form, send_time: event.target.value })}
+                type="time"
+                value={form.send_time}
+              />
+              <input
+                className="field w-full"
+                min={1}
+                onChange={(event) => setForm({ ...form, follow_up_days: Number(event.target.value) })}
+                type="number"
+                value={form.follow_up_days}
+              />
+
+              <div className="flex gap-3 md:col-span-2">
+                <button className="primary-button" type="submit">
+                  Create campaign
+                </button>
+                <button className="secondary-button" onClick={() => setShowNew(false)} type="button">
+                  Cancel
+                </button>
               </div>
+            </form>
+          </Reveal>
+        )}
+
+        <div className="space-y-4">
+          {campaigns.map((campaign, index) => {
+            const statusClass = STATUS_STYLE[campaign.status] || STATUS_STYLE.draft;
+            const progress = campaign.total_leads
+              ? Math.min(Math.round((campaign.total_sent / campaign.total_leads) * 100), 100)
+              : 0;
+
+            return (
+              <Reveal key={campaign.id} delay={index * 0.05}>
+                <div className="glass-card p-6">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="font-display text-3xl font-semibold tracking-[-0.04em]">{campaign.name}</h2>
+                        <span className={`status-pill ${statusClass}`}>{campaign.status}</span>
+                      </div>
+                      <p className="mt-3 max-w-3xl text-sm leading-7 text-white/65">
+                        {campaign.description || "No description yet. Use this campaign to organize one specific outreach angle."}
+                      </p>
+
+                      <div className="mt-5 grid gap-3 md:grid-cols-4">
+                        {[
+                          { label: "Total leads", value: campaign.total_leads },
+                          { label: "Eligible to send", value: campaign.eligible_leads },
+                          { label: "Sent", value: campaign.total_sent },
+                          { label: "Replies", value: campaign.total_replied },
+                        ].map((item) => (
+                          <div key={item.label} className="rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                            <div className="text-xs uppercase tracking-[0.24em] text-white/45">{item.label}</div>
+                            <div className="mt-3 font-display text-3xl font-semibold tracking-[-0.04em]">{item.value}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-5">
+                        <div className="flex items-center justify-between text-sm text-white/55">
+                          <span>
+                            {campaign.emails_per_day}/day at {campaign.send_time} • Follow-up after {campaign.follow_up_days} days
+                          </span>
+                          <span>{progress}% sent</span>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-white/6">
+                          <div
+                            className="h-full rounded-full bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)]"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 xl:w-[290px] xl:justify-end">
+                      <button
+                        className="primary-button"
+                        disabled={launchingId === campaign.id}
+                        onClick={() => triggerSend(campaign.id)}
+                        type="button"
+                      >
+                        <PlayCircle className="h-4 w-4" />
+                        {launchingId === campaign.id ? "Launching..." : "Send now"}
+                      </button>
+                      <button className="secondary-button" onClick={() => toggleStatus(campaign)} type="button">
+                        <PauseCircle className="h-4 w-4" />
+                        {campaign.status === "active" ? "Pause" : "Resume"}
+                      </button>
+                      <button className="secondary-button text-rose-200" onClick={() => deleteCampaign(campaign.id)} type="button">
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {campaign.eligible_leads === 0 && (
+                    <div className="mt-5 rounded-[22px] border border-amber-400/15 bg-amber-400/10 px-4 py-4 text-sm leading-7 text-amber-100">
+                      This campaign has no send-ready leads attached yet. Head to Lead Studio and assign leads to this campaign
+                      before launching.
+                    </div>
+                  )}
+                </div>
+              </Reveal>
+            );
+          })}
+        </div>
+
+        {!campaigns.length && !error && (
+          <Reveal>
+            <div className="glass-card p-10 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(139,243,216,0.2),rgba(72,225,255,0.18))] text-[var(--accent)]">
+                <Sparkles className="h-7 w-7" />
+              </div>
+              <h2 className="mt-6 font-display text-3xl font-semibold tracking-[-0.04em]">No campaigns yet</h2>
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/65">
+                Create a campaign first, then attach leads from Lead Studio so the sending workflow has context and
+                clear ownership.
+              </p>
+              <button className="primary-button mt-6" onClick={() => setShowNew(true)} type="button">
+                <Plus className="h-4 w-4" />
+                Create first campaign
+              </button>
             </div>
-          );
-        })}
-        {!campaigns.length && !apiError && (
-          <div style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.07)", padding: 60, textAlign: "center", color: "rgba(255,255,255,0.18)", fontSize: 14 }}>
-            No campaigns yet. Create one above.
-          </div>
+          </Reveal>
         )}
       </div>
     </Shell>

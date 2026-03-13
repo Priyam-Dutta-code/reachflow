@@ -1,171 +1,274 @@
 "use client";
-import { useState } from "react";
+
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
-import { apiFetch } from "@/lib/api";
+import { useState } from "react";
 
-const inp: React.CSSProperties = {
-  width: "100%", background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12,
-  padding: "11px 14px", fontSize: 14, color: "#e8e8f0",
-  outline: "none", fontFamily: "DM Sans, sans-serif",
-};
+import { apiFetch } from "@/lib/api";
+import { createClient } from "@/lib/supabase";
+
+type Step = "account" | "profile";
 
 export default function SignupPage() {
-  const [step,    setStep]    = useState<"account" | "profile">("account");
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState("");
   const router = useRouter();
+  const [step, setStep] = useState<Step>("account");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [acc, setAcc] = useState({ name: "", email: "", password: "" });
-  const [pro, setPro] = useState({
-    sender_name: "", sender_email: "", sender_phone: "",
-    sender_linkedin: "", sender_role: "Software Engineer",
-    sender_profile: "", gmail_password: "", groq_api_key: "",
+  const [account, setAccount] = useState({ name: "", email: "", password: "" });
+  const [profile, setProfile] = useState({
+    sender_name: "",
+    sender_email: "",
+    sender_phone: "",
+    sender_linkedin: "",
+    sender_role: "Founder / Operator",
+    sender_profile: "",
+    gmail_password: "",
+    groq_api_key: "",
   });
 
-  const submitAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true); setError("");
-    const supabase = createClient();
+  const submitAccount = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
 
-    const { data, error: err } = await supabase.auth.signUp({
-      email: acc.email,
-      password: acc.password,
-      options: { data: { name: acc.name } },
+    const supabase = createClient();
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: account.email,
+      password: account.password,
+      options: { data: { name: account.name } },
     });
 
-    if (err) { setError(err.message); setLoading(false); return; }
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
 
     if (!data.session) {
-      // Email confirmation required — sign them in immediately instead
-      // (works if the user already confirmed, or if they just signed up)
-      const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({
-        email: acc.email, password: acc.password,
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: account.email,
+        password: account.password,
       });
 
-      if (loginErr || !loginData.session) {
-        // They genuinely need to confirm email first
-        setError("Please check your inbox and click the confirmation link, then come back to log in.");
+      if (signInError || !signInData.session) {
+        setError("Check your email and confirm your account, then log in to continue.");
         setLoading(false);
         return;
       }
-      // Session obtained via login
     }
 
-    // Session is active — move to profile step
-    setPro(p => ({ ...p, sender_name: acc.name, sender_email: acc.email }));
+    setProfile((current) => ({
+      ...current,
+      sender_name: account.name,
+      sender_email: account.email,
+    }));
     setStep("profile");
     setLoading(false);
   };
 
-  const submitProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true); setError("");
+  const submitProfile = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+
     try {
       await apiFetch("/api/auth/onboard", {
         method: "POST",
-        body: JSON.stringify({ name: acc.name, ...pro }),
+        body: JSON.stringify({ name: account.name, ...profile }),
       });
       router.replace("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (submissionError: any) {
+      setError(submissionError.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const skipProfile = () => router.replace("/dashboard");
-
   return (
-    <div style={{ minHeight: "100vh", background: "#07070d", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "DM Sans, sans-serif" }}>
-      <div style={{ width: "100%", maxWidth: 440 }}>
+    <div className="app-shell grid min-h-screen place-items-center px-4 py-10">
+      <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="glass-card hidden p-10 lg:flex lg:flex-col lg:justify-between">
+          <div>
+            <div className="section-label">Build the whole flow</div>
+            <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em]">
+              Create the account, then shape the sender persona.
+            </h1>
+            <p className="mt-5 max-w-lg text-base leading-8 text-white/65">
+              Your profile powers the email tone, signature, and targeting context. You can refine it later from
+              Settings.
+            </p>
+          </div>
 
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", color: "white", marginBottom: 20 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#7c3aed,#4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne,sans-serif", fontWeight: 700, fontSize: 14 }}>R</div>
-            <span style={{ fontFamily: "Syne,sans-serif", fontWeight: 700, fontSize: 16 }}>ReachFlow</span>
-          </Link>
-          <h1 style={{ fontFamily: "Syne,sans-serif", fontSize: 22, fontWeight: 700, marginBottom: 6, color: "#e8e8f0" }}>
-            {step === "account" ? "Create your account" : "Set up sender profile"}
-          </h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
-            {step === "account" ? "Free — no credit card needed" : "AI uses this to write personalised emails"}
-          </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 14 }}>
-            {(["account","profile"] as const).map(s => (
-              <div key={s} style={{ height: 4, borderRadius: 4, transition: "all 0.2s", background: step === s ? "#7c3aed" : "rgba(255,255,255,0.1)", width: step === s ? 28 : 14 }} />
+          <div className="space-y-3">
+            {[
+              "Free plan with lead generation and analytics",
+              "Optional Gmail app password for live sending",
+              "Optional Groq key for dedicated AI usage",
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/72">
+                <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
+                {item}
+              </div>
             ))}
           </div>
         </div>
 
-        {error && (
-          <div style={{ marginBottom: 12, padding: "12px 16px", borderRadius: 12, background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171", fontSize: 13, lineHeight: 1.6 }}>
-            {error}
+        <div className="shell-card mx-auto w-full max-w-2xl p-6 md:p-8">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-display text-lg font-bold text-slate-950">
+              R
+            </div>
+            <div>
+              <div className="font-display text-lg font-semibold">ReachFlow</div>
+              <div className="text-xs uppercase tracking-[0.28em] text-white/45">AI outreach SaaS</div>
+            </div>
+          </Link>
+
+          <div className="mt-8 flex items-center gap-3">
+            {(["account", "profile"] as Step[]).map((current, index) => (
+              <div key={current} className="flex items-center gap-3">
+                <div
+                  className={`grid h-10 w-10 place-items-center rounded-full border text-sm font-semibold ${
+                    step === current
+                      ? "border-[rgba(139,243,216,0.4)] bg-[rgba(139,243,216,0.16)] text-white"
+                      : "border-white/10 bg-white/[0.04] text-white/40"
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                {index === 0 && <div className="h-px w-10 bg-white/10" />}
+              </div>
+            ))}
           </div>
-        )}
 
-        {step === "account" ? (
-          <form onSubmit={submitAccount} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <input placeholder="Full name" value={acc.name}
-              onChange={e => setAcc({ ...acc, name: e.target.value })} required style={inp} autoComplete="name" />
-            <input type="email" placeholder="Email address" value={acc.email}
-              onChange={e => setAcc({ ...acc, email: e.target.value })} required style={inp} autoComplete="email" />
-            <input type="password" placeholder="Password (min 6 chars)" value={acc.password}
-              onChange={e => setAcc({ ...acc, password: e.target.value })} required minLength={6} style={inp} autoComplete="new-password" />
+          <div className="mt-8">
+            <h2 className="font-display text-4xl font-semibold tracking-[-0.05em]">
+              {step === "account" ? "Create your account" : "Tune your sender profile"}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-white/65">
+              {step === "account"
+                ? "Start with the basics. You can add sending credentials and voice guidance in the next step."
+                : "These fields make the AI outputs feel more like you and less like a template."}
+            </p>
+          </div>
 
-            <button type="submit" disabled={loading} style={{ background: "#7c3aed", color: "#fff", border: "none", borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 600, cursor: loading ? "wait" : "pointer", fontFamily: "DM Sans, sans-serif", opacity: loading ? 0.65 : 1, marginTop: 4 }}>
-              {loading ? "Creating account…" : "Continue →"}
-            </button>
-
-            <div style={{ marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.15)", fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
-              💡 <strong style={{ color: "rgba(255,255,255,0.6)" }}>Tip:</strong> To skip email confirmation, go to{" "}
-              <strong>Supabase → Authentication → Providers → Email</strong> and disable <em>"Confirm email"</em>.
+          {error && (
+            <div className="mt-6 rounded-3xl border border-[rgba(255,140,140,0.24)] bg-[rgba(255,140,140,0.08)] px-4 py-3 text-sm leading-6 text-[var(--danger)]">
+              {error}
             </div>
-          </form>
-        ) : (
-          <form onSubmit={submitProfile} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <input placeholder="Your name" value={pro.sender_name}
-                onChange={e => setPro({ ...pro, sender_name: e.target.value })} required style={inp} />
-              <input placeholder="Phone (optional)" value={pro.sender_phone}
-                onChange={e => setPro({ ...pro, sender_phone: e.target.value })} style={inp} />
-            </div>
-            <input placeholder="Your role — e.g. Software Engineer" value={pro.sender_role}
-              onChange={e => setPro({ ...pro, sender_role: e.target.value })} style={inp} />
-            <input placeholder="LinkedIn URL (optional)" value={pro.sender_linkedin}
-              onChange={e => setPro({ ...pro, sender_linkedin: e.target.value })} style={inp} />
-            <textarea placeholder="Brief background — skills, tech stack, experience (AI uses this)" value={pro.sender_profile}
-              onChange={e => setPro({ ...pro, sender_profile: e.target.value })} rows={3}
-              style={{ ...inp, resize: "none" }} />
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0 }}>
-                Gmail app password — not your real password.{" "}
-                <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ color: "#a78bfa", textDecoration: "none" }}>Generate here →</a>
-              </p>
-              <input type="password" placeholder="Gmail app password (xxxx xxxx xxxx xxxx)"
-                value={pro.gmail_password} onChange={e => setPro({ ...pro, gmail_password: e.target.value })} style={inp} />
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", margin: "4px 0 0" }}>
-                Groq API key — free AI.{" "}
-                <a href="https://console.groq.com" target="_blank" rel="noreferrer" style={{ color: "#a78bfa", textDecoration: "none" }}>Get one →</a>
-              </p>
-              <input placeholder="Groq API key (gsk_...)"
-                value={pro.groq_api_key} onChange={e => setPro({ ...pro, groq_api_key: e.target.value })} style={inp} />
-            </div>
-            <button type="submit" disabled={loading} style={{ background: "#7c3aed", color: "#fff", border: "none", borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 600, cursor: loading ? "wait" : "pointer", fontFamily: "DM Sans, sans-serif", opacity: loading ? 0.65 : 1, marginTop: 4 }}>
-              {loading ? "Saving…" : "Launch ReachFlow →"}
-            </button>
-            <button type="button" onClick={skipProfile} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.28)", fontSize: 12, cursor: "pointer", padding: 4 }}>
-              Skip for now →
-            </button>
-          </form>
-        )}
+          )}
 
-        <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.28)" }}>
-          Already have an account?{" "}
-          <Link href="/login" style={{ color: "#a78bfa", textDecoration: "none" }}>Log in</Link>
-        </p>
+          {step === "account" ? (
+            <form className="mt-6 space-y-4" onSubmit={submitAccount}>
+              <input
+                autoComplete="name"
+                className="field w-full"
+                onChange={(event) => setAccount({ ...account, name: event.target.value })}
+                placeholder="Full name"
+                required
+                value={account.name}
+              />
+              <input
+                autoComplete="email"
+                className="field w-full"
+                onChange={(event) => setAccount({ ...account, email: event.target.value })}
+                placeholder="Email address"
+                required
+                type="email"
+                value={account.email}
+              />
+              <input
+                autoComplete="new-password"
+                className="field w-full"
+                minLength={6}
+                onChange={(event) => setAccount({ ...account, password: event.target.value })}
+                placeholder="Password"
+                required
+                type="password"
+                value={account.password}
+              />
+
+              <button className="primary-button w-full !justify-center !py-3.5" disabled={loading} type="submit">
+                {loading ? "Creating account..." : "Continue"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </form>
+          ) : (
+            <form className="mt-6 space-y-4" onSubmit={submitProfile}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  className="field w-full"
+                  onChange={(event) => setProfile({ ...profile, sender_name: event.target.value })}
+                  placeholder="Sender name"
+                  required
+                  value={profile.sender_name}
+                />
+                <input
+                  className="field w-full"
+                  onChange={(event) => setProfile({ ...profile, sender_phone: event.target.value })}
+                  placeholder="Phone number"
+                  value={profile.sender_phone}
+                />
+              </div>
+              <input
+                className="field w-full"
+                onChange={(event) => setProfile({ ...profile, sender_role: event.target.value })}
+                placeholder="Your role or positioning"
+                value={profile.sender_role}
+              />
+              <input
+                className="field w-full"
+                onChange={(event) => setProfile({ ...profile, sender_linkedin: event.target.value })}
+                placeholder="LinkedIn URL"
+                value={profile.sender_linkedin}
+              />
+              <textarea
+                className="textarea-field min-h-[130px] w-full"
+                onChange={(event) => setProfile({ ...profile, sender_profile: event.target.value })}
+                placeholder="Describe your offer, background, or the kind of outreach you want AI to help write."
+                value={profile.sender_profile}
+              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  className="field w-full"
+                  onChange={(event) => setProfile({ ...profile, gmail_password: event.target.value })}
+                  placeholder="Gmail app password (optional)"
+                  type="password"
+                  value={profile.gmail_password}
+                />
+                <input
+                  className="field w-full"
+                  onChange={(event) => setProfile({ ...profile, groq_api_key: event.target.value })}
+                  placeholder="Groq API key (optional)"
+                  value={profile.groq_api_key}
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button className="primary-button flex-1 !justify-center !py-3.5" disabled={loading} type="submit">
+                  {loading ? "Saving profile..." : "Launch workspace"}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+                <button
+                  className="secondary-button flex-1 !justify-center !py-3.5"
+                  onClick={() => router.replace("/dashboard")}
+                  type="button"
+                >
+                  Skip for now
+                </button>
+              </div>
+            </form>
+          )}
+
+          <p className="mt-6 text-sm text-white/55">
+            Already have an account?{" "}
+            <Link className="text-[var(--accent)] transition hover:text-white" href="/login">
+              Log in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

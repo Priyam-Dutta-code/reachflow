@@ -1,143 +1,438 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { ArrowRight, Eye, Filter, Sparkles, Target } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+import { Reveal } from "@/components/Reveal";
 import Shell from "@/components/Shell";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
-  pending: { color: "rgba(255,255,255,0.4)",  bg: "rgba(255,255,255,0.06)" },
-  sent:    { color: "#60a5fa",                bg: "rgba(96,165,250,0.12)"  },
-  replied: { color: "#34d399",                bg: "rgba(52,211,153,0.12)"  },
-  bounced: { color: "#f87171",                bg: "rgba(248,113,113,0.12)" },
+const SOURCE_DETAILS = {
+  google_maps: "Best for local businesses and agencies.",
+  linkedin: "Use for people-first prospecting and recruiter style searches.",
+  apollo: "Great when you already know titles, sectors, or ICP patterns.",
+  job_portal: "Useful for hiring and recruiter-oriented outreach workflows.",
 };
-const inp: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 11, padding: "10px 13px", fontSize: 13, color: "#e8e8f0",
-  outline: "none", fontFamily: "DM Sans, sans-serif",
+
+const STATUS_STYLES: Record<string, string> = {
+  pending: "border-white/10 bg-white/5 text-white/70",
+  sent: "border-sky-400/20 bg-sky-400/10 text-sky-200",
+  replied: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+  bounced: "border-rose-400/20 bg-rose-400/10 text-rose-200",
 };
 
 export default function LeadsPage() {
-  const [leads,      setLeads]      = useState<any[]>([]);
-  const [total,      setTotal]      = useState(0);
-  const [page,       setPage]       = useState(1);
-  const [status,     setStatus]     = useState("");
-  const [generating, setGen]        = useState(false);
-  const [apiError,   setApiError]   = useState("");
-  const [genMsg,     setGenMsg]     = useState("");
-  const [form, setForm] = useState({ source: "google_maps", query: "", location: "", max: 50 });
+  const [leads, setLeads] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState<any>(null);
+  const [previewLeadId, setPreviewLeadId] = useState<number | null>(null);
   const { session } = useAuth();
 
-  const load = async (p = 1, s = status) => {
+  const [form, setForm] = useState({
+    source: "google_maps",
+    query: "",
+    location: "",
+    industry: "",
+    method: "selenium",
+    portal: "naukri",
+    max: 40,
+    campaign_id: "",
+  });
+
+  const load = async (nextPage = page, nextStatus = status) => {
     try {
-      const params = new URLSearchParams({ page: String(p), per_page: "50" });
-      if (s) params.set("status", s);
-      const d = await apiFetch(`/api/leads/?${params}`);
-      setLeads(d.leads ?? []); setTotal(d.total ?? 0);
-      setApiError("");
-    } catch (e: any) {
-      setApiError(e.message);
+      const params = new URLSearchParams({
+        page: String(nextPage),
+        per_page: "50",
+      });
+      if (nextStatus) {
+        params.set("status", nextStatus);
+      }
+
+      const [leadData, campaignData] = await Promise.all([
+        apiFetch(`/api/leads/?${params.toString()}`),
+        apiFetch("/api/campaigns/"),
+      ]);
+
+      setLeads(leadData.leads ?? []);
+      setTotal(leadData.total ?? 0);
+      setCampaigns(campaignData ?? []);
+      setError("");
+    } catch (requestError: any) {
+      setError(requestError.message);
     }
   };
 
-  useEffect(() => { if (session) load(); }, [session]);
+  useEffect(() => {
+    if (session) {
+      load(1, status);
+    }
+  }, [session]);
 
-  const generate = async () => {
-    if (!form.query.trim()) return;
-    setGen(true); setGenMsg("Scraping in background — refreshing in 5 seconds…");
+  const generateLeads = async () => {
+    if (!form.query.trim()) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
     try {
-      await apiFetch("/api/leads/generate", { method: "POST", body: JSON.stringify(form) });
-      setTimeout(() => { load(); setGen(false); setGenMsg(""); }, 5000);
-    } catch (e: any) {
-      setApiError(e.message); setGen(false); setGenMsg("");
+      await apiFetch("/api/leads/generate", {
+        method: "POST",
+        body: JSON.stringify({
+          ...form,
+          max: Number(form.max),
+          campaign_id: form.campaign_id ? Number(form.campaign_id) : null,
+        }),
+      });
+      await load(1, status);
+    } catch (requestError: any) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filterBy = (s: string) => { setStatus(s); setPage(1); load(1, s); };
+  const updateLeadCampaign = async (leadId: number, campaignId: string) => {
+    try {
+      await apiFetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ campaign_id: campaignId ? Number(campaignId) : null }),
+      });
+      await load(page, status);
+    } catch (requestError: any) {
+      setError(requestError.message);
+    }
+  };
+
+  const previewEmail = async (leadId: number) => {
+    setPreviewLeadId(leadId);
+    try {
+      const data = await apiFetch("/api/emails/preview", {
+        method: "POST",
+        body: JSON.stringify({ lead_id: leadId }),
+      });
+      setPreview(data);
+      setError("");
+    } catch (requestError: any) {
+      setError(requestError.message);
+    } finally {
+      setPreviewLeadId(null);
+    }
+  };
+
+  const filteredStatusButtons = ["", "pending", "sent", "replied", "bounced"];
+  const sourceDetail = SOURCE_DETAILS[form.source as keyof typeof SOURCE_DETAILS];
+
+  const campaignOptions = useMemo(
+    () => campaigns.map((campaign) => ({ value: String(campaign.id), label: campaign.name })),
+    [campaigns]
+  );
 
   return (
     <Shell>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: "Syne,sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 4 }}>Leads</h1>
-        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)" }}>{total.toLocaleString()} total leads</p>
-      </div>
-
-      {apiError && (
-        <div style={{ marginBottom: 16, padding: "12px 16px", borderRadius: 12, background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", fontSize: 13 }}>
-          ⚠ {apiError} — Check that the backend is running and your <code>SUPABASE_URL</code> is set in <code>.env</code>
-        </div>
-      )}
-
-      {/* Generate form */}
-      <div style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)", padding: 22, marginBottom: 18 }}>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: 14, fontWeight: 500 }}>Generate New Leads</p>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} style={{ ...inp, cursor: "pointer", minWidth: 160 }}>
-            <option value="google_maps">Google Maps</option>
-            <option value="linkedin">LinkedIn</option>
-            <option value="apollo">Apollo.io</option>
-            <option value="job_portal">Job Portals</option>
-          </select>
-          <input placeholder="Query — e.g. HR Manager" value={form.query} onChange={e => setForm({ ...form, query: e.target.value })} style={{ ...inp, flex: 1, minWidth: 160 }} />
-          <input placeholder="Location — e.g. Bangalore" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} style={{ ...inp, flex: 1, minWidth: 140 }} />
-          <button onClick={generate} disabled={generating || !form.query.trim()} style={{ padding: "10px 20px", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 11, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans, sans-serif", opacity: generating || !form.query.trim() ? 0.5 : 1 }}>
-            {generating ? "Running…" : "Generate →"}
-          </button>
-        </div>
-        {genMsg && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 10 }}>{genMsg}</p>}
-      </div>
-
-      {/* Filter */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        {["", "pending", "sent", "replied", "bounced"].map(s => (
-          <button key={s} onClick={() => filterBy(s)} style={{ padding: "6px 14px", borderRadius: 9, border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "DM Sans, sans-serif", background: status === s ? "#7c3aed" : "rgba(255,255,255,0.06)", color: status === s ? "#fff" : "rgba(255,255,255,0.4)" }}>
-            {s === "" ? "All" : s[0].toUpperCase() + s.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)", overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                {["Name", "Company", "Email", "Title", "Location", "Status", "Source"].map(h => (
-                  <th key={h} style={{ textAlign: "left", padding: "12px 16px", fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.07em", whiteSpace: "nowrap" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((l, i) => (
-                <tr key={l.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: i % 2 ? "rgba(255,255,255,0.01)" : "transparent" }}>
-                  <td style={{ padding: "11px 16px", fontWeight: 500 }}>{l.name || "—"}</td>
-                  <td style={{ padding: "11px 16px", color: "rgba(255,255,255,0.6)" }}>{l.company || "—"}</td>
-                  <td style={{ padding: "11px 16px", fontFamily: "monospace", fontSize: 12 }}>
-                    {l.email ? <span style={{ color: "rgba(255,255,255,0.5)" }}>{l.email}</span> : <span style={{ color: "rgba(248,113,113,0.6)" }}>no email</span>}
-                  </td>
-                  <td style={{ padding: "11px 16px", color: "rgba(255,255,255,0.45)" }}>{l.title || "—"}</td>
-                  <td style={{ padding: "11px 16px", color: "rgba(255,255,255,0.35)", fontSize: 12 }}>{l.location || "—"}</td>
-                  <td style={{ padding: "11px 16px" }}>
-                    {(() => { const st = STATUS_STYLE[l.status] ?? STATUS_STYLE.pending; return <span style={{ fontSize: 11, fontWeight: 500, padding: "3px 9px", borderRadius: 99, background: st.bg, color: st.color }}>{l.status}</span>; })()}
-                  </td>
-                  <td style={{ padding: "11px 16px", color: "rgba(255,255,255,0.22)", fontSize: 12 }}>{(l.source || "").replace(/_/g, " ")}</td>
-                </tr>
-              ))}
-              {!leads.length && (
-                <tr><td colSpan={7} style={{ padding: "60px 20px", textAlign: "center", color: "rgba(255,255,255,0.18)", fontSize: 14 }}>
-                  {apiError ? "Could not load leads — see error above." : "No leads yet. Generate some above."}
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        {total > 50 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.28)" }}>Showing {(page-1)*50+1}–{Math.min(page*50, total)} of {total}</span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setPage(page-1); load(page-1); }} disabled={page===1} style={{ padding: "6px 14px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer", opacity: page===1 ? 0.3 : 1 }}>← Prev</button>
-              <button onClick={() => { setPage(page+1); load(page+1); }} disabled={page*50>=total} style={{ padding: "6px 14px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer", opacity: page*50>=total ? 0.3 : 1 }}>Next →</button>
+      <div className="space-y-6">
+        <Reveal>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <div className="section-label">Lead studio</div>
+              <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
+                Generate, sort, and attach leads without breaking flow.
+              </h1>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
+                This view now treats campaigns as first-class. Generate directly into a campaign, preview the email for
+                any lead, and keep the pipeline ready to send.
+              </p>
+            </div>
+            <div className="glass-card flex items-center gap-4 px-5 py-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.24em] text-white/45">Lead count</div>
+                <div className="mt-2 font-display text-4xl font-semibold tracking-[-0.04em]">{total}</div>
+              </div>
+              <Target className="h-8 w-8 text-[var(--accent)]" />
             </div>
           </div>
+        </Reveal>
+
+        {error && (
+          <div className="rounded-[24px] border border-[rgba(255,140,140,0.24)] bg-[rgba(255,140,140,0.08)] px-5 py-4 text-sm leading-7 text-[var(--danger)]">
+            {error}
+          </div>
+        )}
+
+        <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+          <Reveal>
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-3">
+                <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,rgba(139,243,216,0.2),rgba(72,225,255,0.18))] text-[var(--accent)]">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-display text-2xl font-semibold tracking-[-0.04em]">Generate new leads</div>
+                  <div className="text-sm text-white/60">{sourceDetail}</div>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <select
+                  className="field w-full"
+                  onChange={(event) => setForm({ ...form, source: event.target.value })}
+                  value={form.source}
+                >
+                  <option value="google_maps">Google Maps</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="apollo">Apollo</option>
+                  <option value="job_portal">Job portals</option>
+                </select>
+                <select
+                  className="field w-full"
+                  onChange={(event) => setForm({ ...form, campaign_id: event.target.value })}
+                  value={form.campaign_id}
+                >
+                  <option value="">No campaign yet</option>
+                  {campaignOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="field w-full md:col-span-2"
+                  onChange={(event) => setForm({ ...form, query: event.target.value })}
+                  placeholder="Search query, title, or prospect type"
+                  value={form.query}
+                />
+                <input
+                  className="field w-full"
+                  onChange={(event) => setForm({ ...form, location: event.target.value })}
+                  placeholder="Location"
+                  value={form.location}
+                />
+                <input
+                  className="field w-full"
+                  onChange={(event) => setForm({ ...form, industry: event.target.value })}
+                  placeholder="Industry or niche"
+                  value={form.industry}
+                />
+
+                {(form.source === "linkedin" || form.source === "job_portal") && (
+                  <select
+                    className="field w-full"
+                    onChange={(event) => setForm({ ...form, method: event.target.value })}
+                    value={form.method}
+                  >
+                    <option value="selenium">Browser-assisted</option>
+                    <option value="apollo">Apollo lookup</option>
+                  </select>
+                )}
+
+                {form.source === "job_portal" && (
+                  <select
+                    className="field w-full"
+                    onChange={(event) => setForm({ ...form, portal: event.target.value })}
+                    value={form.portal}
+                  >
+                    <option value="naukri">Naukri</option>
+                    <option value="indeed">Indeed</option>
+                    <option value="linkedin_jobs">LinkedIn Jobs</option>
+                  </select>
+                )}
+
+                <input
+                  className="field w-full"
+                  max={200}
+                  min={1}
+                  onChange={(event) => setForm({ ...form, max: Number(event.target.value) })}
+                  type="number"
+                  value={form.max}
+                />
+              </div>
+
+              <button className="primary-button mt-6" disabled={loading} onClick={generateLeads} type="button">
+                {loading ? "Starting generation..." : "Generate leads"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <div className="glass-card p-6">
+              <div className="section-label !px-3 !py-1.5 !text-[10px]">Campaign-ready guidance</div>
+              <div className="mt-5 space-y-4">
+                {[
+                  "Create a campaign first if you want new leads to be send-ready immediately.",
+                  "Preview the generated email from any lead row before launching a campaign batch.",
+                  "Use status filters to separate untouched leads from already-contacted prospects.",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-7 text-white/70"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        </div>
+
+        <Reveal>
+          <div className="glass-card p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {filteredStatusButtons.map((item) => (
+                  <button
+                    key={item || "all"}
+                    className={`rounded-full border px-4 py-2 text-sm transition ${
+                      status === item
+                        ? "border-[rgba(139,243,216,0.34)] bg-[rgba(139,243,216,0.14)] text-white"
+                        : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06]"
+                    }`}
+                    onClick={() => {
+                      setStatus(item);
+                      setPage(1);
+                      load(1, item);
+                    }}
+                    type="button"
+                  >
+                    {item ? item[0].toUpperCase() + item.slice(1) : "All leads"}
+                  </button>
+                ))}
+              </div>
+              <div className="inline-flex items-center gap-2 text-sm text-white/55">
+                <Filter className="h-4 w-4" />
+                Filter the pipeline and keep campaign inputs clean.
+              </div>
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-[24px] border border-white/10">
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-left text-sm">
+                  <thead className="bg-white/[0.04] text-xs uppercase tracking-[0.24em] text-white/45">
+                    <tr>
+                      {["Lead", "Company", "Campaign", "Status", "Source", "Actions"].map((header) => (
+                        <th key={header} className="px-4 py-4 font-medium">
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leads.map((lead) => (
+                      <tr key={lead.id} className="border-t border-white/6 text-white/74">
+                        <td className="px-4 py-4">
+                          <div className="font-medium text-white">{lead.name || "Unknown contact"}</div>
+                          <div className="mt-1 text-xs text-white/45">{lead.email || "No email found yet"}</div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div>{lead.company || "Unknown company"}</div>
+                          <div className="mt-1 text-xs text-white/45">{lead.location || "No location"}</div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <select
+                            className="field !h-11 !min-w-[180px]"
+                            onChange={(event) => updateLeadCampaign(lead.id, event.target.value)}
+                            value={lead.campaign_id ? String(lead.campaign_id) : ""}
+                          >
+                            <option value="">Unassigned</option>
+                            {campaignOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`status-pill ${STATUS_STYLES[lead.status] || STATUS_STYLES.pending}`}>
+                            {lead.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-white/55">{lead.source?.replace(/_/g, " ")}</td>
+                        <td className="px-4 py-4">
+                          <button
+                            className="secondary-button !px-4 !py-2"
+                            onClick={() => previewEmail(lead.id)}
+                            type="button"
+                          >
+                            <Eye className="h-4 w-4" />
+                            {previewLeadId === lead.id ? "Loading..." : "Preview"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {!leads.length && (
+                <div className="px-6 py-16 text-center text-sm text-white/45">
+                  No leads yet. Generate a batch above and attach them to a campaign when you can.
+                </div>
+              )}
+            </div>
+
+            {total > 50 && (
+              <div className="mt-4 flex items-center justify-between text-sm text-white/55">
+                <div>
+                  Showing {(page - 1) * 50 + 1}-{Math.min(page * 50, total)} of {total}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="secondary-button !px-4 !py-2"
+                    disabled={page === 1}
+                    onClick={() => {
+                      const nextPage = page - 1;
+                      setPage(nextPage);
+                      load(nextPage, status);
+                    }}
+                    type="button"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="secondary-button !px-4 !py-2"
+                    disabled={page * 50 >= total}
+                    onClick={() => {
+                      const nextPage = page + 1;
+                      setPage(nextPage);
+                      load(nextPage, status);
+                    }}
+                    type="button"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Reveal>
+
+        {preview && (
+          <Reveal>
+            <div className="glass-card p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="section-label !px-3 !py-1.5 !text-[10px]">Email preview</div>
+                  <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">{preview.subject}</h2>
+                  <p className="mt-3 text-sm text-white/55">
+                    To: {preview.to || "No email"} {preview.company ? `• ${preview.company}` : ""}
+                  </p>
+                </div>
+                <button className="secondary-button" onClick={() => setPreview(null)} type="button">
+                  Close
+                </button>
+              </div>
+              <pre className="mt-6 whitespace-pre-wrap rounded-[24px] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/72">
+                {preview.body}
+              </pre>
+            </div>
+          </Reveal>
         )}
       </div>
     </Shell>

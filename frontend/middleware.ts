@@ -1,6 +1,11 @@
-// middleware.ts
-// Auth is handled client-side in Shell.tsx and lib/auth.tsx.
-// No server-side middleware needed — avoids race conditions with
-// Supabase's getUser() network call redirecting before cookies settle.
-export function middleware() {}
-export const config = { matcher: [] }; // match nothing
+import type { NextRequest } from "next/server";
+
+import { updateSession } from "@/lib/supabase-middleware";
+
+export async function middleware(request: NextRequest) {
+  return updateSession(request);
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+};

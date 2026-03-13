@@ -1,106 +1,187 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { Activity, BarChart3, Sparkles, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+import { Reveal } from "@/components/Reveal";
 import Shell from "@/components/Shell";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 export default function AnalyticsPage() {
-  const [data,     setData]     = useState<any>(null);
-  const [apiError, setApiError] = useState("");
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState("");
   const { session } = useAuth();
 
   useEffect(() => {
-    if (!session) return;
+    if (!session) {
+      return;
+    }
+
     apiFetch("/api/analytics/overview")
-      .then(d => { setData(d); setApiError(""); })
-      .catch(e => setApiError(e.message));
+      .then((analytics) => {
+        setData(analytics);
+        setError("");
+      })
+      .catch((requestError: any) => setError(requestError.message));
   }, [session]);
 
-  const maxSend = Math.max(...(data?.daily_sends?.map((d: any) => d.count) ?? [1]), 1);
+  const maxDailySends = useMemo(
+    () => Math.max(1, ...(data?.daily_sends?.map((item: any) => item.count) ?? [1])),
+    [data]
+  );
 
-  const STATS = data ? [
-    { label: "Total Leads", value: data.total_leads?.toLocaleString() ?? "0" },
-    { label: "Emails Sent", value: data.sent?.toLocaleString()         ?? "0" },
-    { label: "Replied",     value: data.replied ?? "0",   sub: `${data.reply_rate ?? 0}% rate` },
-    { label: "Follow-ups",  value: data.follow_ups ?? "0" },
-  ] : [];
+  const metrics = [
+    { label: "Leads", value: data?.total_leads ?? 0, icon: Activity },
+    { label: "Sent", value: data?.sent ?? 0, icon: Sparkles },
+    { label: "Reply rate", value: `${data?.reply_rate ?? 0}%`, icon: TrendingUp },
+    { label: "Credits", value: data?.credits_left ?? 0, icon: BarChart3 },
+  ];
 
   return (
     <Shell>
-      <h1 style={{ fontFamily: "Syne,sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 28 }}>Analytics</h1>
-
-      {apiError && (
-        <div style={{ marginBottom: 20, padding: "12px 16px", borderRadius: 12, background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", fontSize: 13 }}>
-          ⚠ {apiError} — Check <code>SUPABASE_JWT_SECRET</code> in backend <code>.env</code>
-        </div>
-      )}
-
-      {!data && !apiError ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "rgba(255,255,255,0.18)", fontSize: 14 }}>Loading…</div>
-      ) : data && (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14, marginBottom: 20 }}>
-            {STATS.map(c => (
-              <div key={c.label} style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)", padding: 22 }}>
-                <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{c.label}</div>
-                <div style={{ fontFamily: "Syne,sans-serif", fontSize: 32, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{c.value}</div>
-                {c.sub && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.33)" }}>{c.sub}</div>}
-              </div>
-            ))}
+      <div className="space-y-6">
+        <Reveal>
+          <div>
+            <div className="section-label">Analytics</div>
+            <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
+              Read the funnel, not just the raw numbers.
+            </h1>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
+              This dashboard helps you understand where your outreach pipeline is working: sourcing quality, email
+              coverage, send volume, and the conversion to replies.
+            </p>
           </div>
+        </Reveal>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            {[
-              { title: "Lead Sources", key: "sources",    nameKey: "source",   color: "linear-gradient(90deg,#7c3aed,#4f46e5)" },
-              { title: "Industries",   key: "industries", nameKey: "industry", color: "linear-gradient(90deg,#4f46e5,#3b82f6)" },
-            ].map(panel => (
-              <div key={panel.key} style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)", padding: 22 }}>
-                <h2 style={{ fontFamily: "Syne,sans-serif", fontWeight: 600, fontSize: 15, marginBottom: 18 }}>{panel.title}</h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {data[panel.key]?.map((item: any) => {
-                    const name = item[panel.nameKey] ?? "Unknown";
-                    const pct  = data.total_leads > 0 ? Math.round(item.count / data.total_leads * 100) : 0;
-                    return (
-                      <div key={name}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
-                          <span style={{ color: "rgba(255,255,255,0.5)", textTransform: "capitalize" }}>{name.replace(/_/g, " ")}</span>
-                          <span style={{ fontWeight: 500 }}>{item.count} <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 11 }}>({pct}%)</span></span>
-                        </div>
-                        <div style={{ height: 5, borderRadius: 99, background: "rgba(255,255,255,0.06)" }}>
-                          <div style={{ height: "100%", borderRadius: 99, background: panel.color, width: `${pct}%`, transition: "width 0.6s ease" }} />
-                        </div>
+        {error && (
+          <div className="rounded-[24px] border border-[rgba(255,140,140,0.24)] bg-[rgba(255,140,140,0.08)] px-5 py-4 text-sm leading-7 text-[var(--danger)]">
+            {error}
+          </div>
+        )}
+
+        {!data && !error ? (
+          <div className="glass-card p-10 text-sm text-white/60">Loading analytics...</div>
+        ) : null}
+
+        {data && (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {metrics.map((metric, index) => {
+                const Icon = metric.icon;
+                return (
+                  <Reveal key={metric.label} delay={index * 0.06}>
+                    <div className="metric-card h-full">
+                      <div className="flex items-center justify-between">
+                        <div className="metric-label">{metric.label}</div>
+                        <Icon className="h-4 w-4 text-[var(--accent)]" />
                       </div>
-                    );
-                  })}
-                  {!data[panel.key]?.length && <p style={{ fontSize: 13, color: "rgba(255,255,255,0.2)" }}>No data yet.</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)", padding: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ fontFamily: "Syne,sans-serif", fontWeight: 600, fontSize: 15 }}>Daily Sends — Last 30 Days</h2>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>Peak: {maxSend}/day</span>
+                      <div className="metric-value">{metric.value}</div>
+                    </div>
+                  </Reveal>
+                );
+              })}
             </div>
-            {data.daily_sends?.length ? (
-              <>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 80 }}>
-                  {data.daily_sends.map((d: any, i: number) => (
-                    <div key={i} title={`${d.date}: ${d.count}`} style={{ flex: 1, height: Math.max(Math.round(d.count / maxSend * 80), 3), borderRadius: 3, background: `rgba(124,58,237,${0.25 + d.count / maxSend * 0.65})` }} />
-                  ))}
+
+            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+              <Reveal>
+                <div className="glass-card p-6">
+                  <div className="section-label !px-3 !py-1.5 !text-[10px]">Daily sends</div>
+                  <div className="mt-5 flex flex-col gap-4">
+                    <div className="flex h-60 items-end gap-2 rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
+                      {data.daily_sends?.length ? (
+                        data.daily_sends.map((item: any) => (
+                          <div key={item.date} className="flex flex-1 flex-col items-center justify-end gap-2">
+                            <div
+                              className="w-full rounded-full bg-[linear-gradient(180deg,rgba(139,243,216,0.95),rgba(72,225,255,0.45))]"
+                              style={{ height: `${Math.max(14, (item.count / maxDailySends) * 180)}px` }}
+                              title={`${item.date}: ${item.count}`}
+                            />
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-white/35">
+                              {String(item.date).slice(5)}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="m-auto text-sm text-white/45">Launch a campaign to populate this chart.</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.18)" }}>
-                  <span>{data.daily_sends[0]?.date}</span>
-                  <span>{data.daily_sends[data.daily_sends.length - 1]?.date}</span>
+              </Reveal>
+
+              <Reveal delay={0.08}>
+                <div className="glass-card p-6">
+                  <div className="section-label !px-3 !py-1.5 !text-[10px]">Source mix</div>
+                  <div className="mt-5 space-y-4">
+                    {(data.sources?.length ? data.sources : [{ source: "none", count: 0 }]).map((item: any) => {
+                      const ratio = data.total_leads ? Math.min(Math.round((item.count / data.total_leads) * 100), 100) : 0;
+                      return (
+                        <div key={item.source} className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-sm capitalize text-white/70">{item.source.replace(/_/g, " ")}</span>
+                            <span className="text-sm text-white/55">{item.count}</span>
+                          </div>
+                          <div className="mt-3 h-2 rounded-full bg-white/6">
+                            <div
+                              className="h-full rounded-full bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)]"
+                              style={{ width: `${ratio}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </>
-            ) : (
-              <p style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 14, padding: "40px 0" }}>No sends yet. Launch a campaign to see data here.</p>
-            )}
-          </div>
-        </>
-      )}
+              </Reveal>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+              <Reveal>
+                <div className="glass-card p-6">
+                  <div className="section-label !px-3 !py-1.5 !text-[10px]">Industries</div>
+                  <div className="mt-5 space-y-4">
+                    {(data.industries?.length ? data.industries : [{ industry: "No data yet", count: 0 }]).map(
+                      (item: any) => (
+                        <div key={item.industry} className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-sm text-white/70">{item.industry}</span>
+                            <span className="text-sm text-white/55">{item.count}</span>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal delay={0.08}>
+                <div className="glass-card p-6">
+                  <div className="section-label !px-3 !py-1.5 !text-[10px]">Funnel health</div>
+                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {data.funnel?.map((item: any) => {
+                      const total = Math.max(data.total_leads || 0, 1);
+                      const ratio = Math.min(Math.round((item.count / total) * 100), 100);
+                      return (
+                        <div key={item.stage} className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+                          <div className="text-xs uppercase tracking-[0.24em] text-white/45">{item.stage}</div>
+                          <div className="mt-3 font-display text-3xl font-semibold tracking-[-0.04em]">{item.count}</div>
+                          <div className="mt-3 h-2 rounded-full bg-white/6">
+                            <div
+                              className="h-full rounded-full bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)]"
+                              style={{ width: `${ratio}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          </>
+        )}
+      </div>
     </Shell>
   );
 }

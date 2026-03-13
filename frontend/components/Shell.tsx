@@ -1,104 +1,196 @@
 "use client";
-import { useEffect } from "react";
+
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  BarChart3,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  UserCog,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 import { useAuth } from "@/lib/auth";
 
 const NAV = [
-  { href: "/dashboard",  label: "Dashboard", icon: "⬛" },
-  { href: "/leads",      label: "Leads",      icon: "◎"  },
-  { href: "/campaigns",  label: "Campaigns",  icon: "◈"  },
-  { href: "/analytics",  label: "Analytics",  icon: "◉"  },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/leads", label: "Lead Studio", icon: Target },
+  { href: "/campaigns", label: "Campaigns", icon: Sparkles },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: UserCog },
 ];
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router   = useRouter();
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { user, loading, signOut } = useAuth();
 
   useEffect(() => {
-    // Only redirect after loading is done and we know there's no session
     if (!loading && !user) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
-  }, [loading, user, pathname, router]);
+  }, [loading, pathname, router, user]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  if (loading) {
+    return (
+      <div className="app-shell grid min-h-screen place-items-center px-6">
+        <div className="glass-card flex items-center gap-3 px-6 py-4 text-sm text-white/70">
+          <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--accent)]" />
+          Securing your workspace...
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const handleLogout = async () => {
     await signOut();
     router.replace("/login");
   };
 
-  // Show blank dark screen while auth state loads (prevents any flash)
-  if (loading) {
-    return (
-      <div style={{ background: "#07070d", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "rgba(255,255,255,0.12)", fontSize: 13, fontFamily: "DM Sans, sans-serif" }}>Loading…</div>
-      </div>
-    );
-  }
-
-  // Don't render any protected content until auth is confirmed
-  if (!user) return null;
-
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#07070d", color: "#e8e8f0" }}>
-      <aside style={{
-        width: 212, borderRight: "1px solid rgba(255,255,255,0.07)",
-        display: "flex", flexDirection: "column", padding: "20px 12px",
-        position: "sticky", top: 0, height: "100vh", flexShrink: 0,
-        fontFamily: "DM Sans, sans-serif",
-      }}>
-        {/* Logo */}
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 8px", marginBottom: 28, textDecoration: "none", color: "white" }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg,#7c3aed,#4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, fontFamily: "Syne,sans-serif" }}>R</div>
-          <span style={{ fontFamily: "Syne,sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: "-0.02em" }}>ReachFlow</span>
-        </Link>
+    <div className="app-shell">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1600px] gap-4 px-4 py-4 md:px-6 md:py-6">
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.button
+              aria-label="Close navigation"
+              className="fixed inset-0 z-30 bg-slate-950/55 backdrop-blur-sm md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMenuOpen(false)}
+            />
+          )}
+        </AnimatePresence>
 
-        {/* Nav links */}
-        <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-          {NAV.map(n => {
-            const active = pathname === n.href;
-            return (
-              <Link key={n.href} href={n.href} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "9px 10px",
-                borderRadius: 10, textDecoration: "none", fontSize: 13.5,
-                fontWeight: active ? 500 : 400,
-                background: active ? "rgba(124,58,237,0.18)" : "transparent",
-                color: active ? "#c4b5fd" : "rgba(255,255,255,0.45)",
-                transition: "background 0.15s, color 0.15s",
-              }}>
-                <span style={{ fontSize: 15 }}>{n.icon}</span>{n.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User info */}
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 10, marginBottom: 6 }}>
-          <div style={{ padding: "4px 10px 6px", fontSize: 11, color: "rgba(255,255,255,0.2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {user.email}
+        <motion.aside
+          className={`shell-card fixed inset-y-4 left-4 z-40 flex w-[280px] flex-col overflow-hidden p-4 md:sticky md:top-6 md:z-10 md:h-[calc(100vh-3rem)] md:translate-x-0 ${
+            menuOpen ? "translate-x-0" : "-translate-x-[120%]"
+          } transition-transform duration-300`}
+          initial={false}
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] text-lg font-bold text-slate-950">
+                R
+              </div>
+              <div>
+                <div className="font-display text-lg font-semibold">ReachFlow</div>
+                <div className="text-xs uppercase tracking-[0.28em] text-white/45">
+                  Command Center
+                </div>
+              </div>
+            </Link>
+            <button
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-white/70 md:hidden"
+              onClick={() => setMenuOpen(false)}
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-        </div>
 
-        {/* Upgrade + logout */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Link href="/pricing" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, textDecoration: "none", fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
-            <span>💳</span> Upgrade
-          </Link>
-          <button onClick={handleLogout} style={{
-            display: "flex", alignItems: "center", gap: 10, padding: "8px 10px",
-            borderRadius: 10, border: "none", background: "transparent",
-            fontSize: 13, color: "rgba(255,255,255,0.2)", cursor: "pointer",
-            fontFamily: "DM Sans, sans-serif", width: "100%", textAlign: "left",
-          }}>
-            <span>→</span> Log out
-          </button>
-        </div>
-      </aside>
+          <div className="mb-6 rounded-[24px] border border-white/10 bg-white/5 p-4">
+            <div className="section-label !px-3 !py-1.5 !text-[10px]">Workspace secured</div>
+            <div className="mt-4 text-2xl font-display font-semibold tracking-[-0.04em]">
+              Launch faster with clear next steps.
+            </div>
+            <p className="mt-3 text-sm leading-6 text-white/65">
+              Generate leads, assign them to campaigns, preview the AI email, then ship.
+            </p>
+          </div>
 
-      <main style={{ flex: 1, padding: "32px 36px", overflowY: "auto", maxHeight: "100vh" }}>
-        {children}
-      </main>
+          <nav className="flex flex-1 flex-col gap-2">
+            {NAV.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`glow-border flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition ${
+                    active
+                      ? "border-[rgba(139,243,216,0.34)] bg-[linear-gradient(135deg,rgba(139,243,216,0.14),rgba(72,225,255,0.08))] text-white"
+                      : "border-white/5 bg-white/[0.03] text-white/68 hover:border-white/10 hover:bg-white/[0.05]"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </span>
+                  {active && <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-6 space-y-3 rounded-[24px] border border-white/10 bg-[rgba(255,255,255,0.04)] p-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white/8 text-sm font-semibold">
+                {user.email?.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-white">{user.email}</div>
+                <div className="mt-1 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/45">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  authenticated
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/pricing" className="secondary-button flex-1 !justify-center !px-4 !py-2.5">
+                Upgrade
+              </Link>
+              <button
+                className="secondary-button flex-1 !justify-center !px-4 !py-2.5 text-white/70"
+                onClick={handleLogout}
+                type="button"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
+            </div>
+          </div>
+        </motion.aside>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="shell-card flex items-center justify-between px-4 py-3 md:hidden">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-bold text-slate-950">
+                R
+              </div>
+              <div className="font-display text-lg font-semibold">ReachFlow</div>
+            </Link>
+            <button
+              className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white"
+              onClick={() => setMenuOpen(true)}
+              type="button"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+
+          <main className="shell-card relative min-h-[calc(100vh-2rem)] flex-1 overflow-hidden p-4 md:p-6 lg:p-8">
+            <div className="absolute inset-x-6 top-0 h-px ambient-line opacity-60" />
+            <div className="relative">{children}</div>
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,21 +1,35 @@
 import type { Metadata } from "next";
+import { Manrope, Space_Grotesk } from "next/font/google";
+
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 
+const displayFont = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["500", "700"],
+});
+
+const bodyFont = Manrope({
+  subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
-  title: "ReachFlow — AI Cold Outreach Automation",
-  description: "Generate leads, write AI cold emails, land interviews on autopilot.",
+  metadataBase: new URL("https://reachflow-indol.vercel.app"),
+  title: {
+    default: "ReachFlow | AI Outreach Command Center",
+    template: "%s | ReachFlow",
+  },
+  description:
+    "Generate leads, personalize outreach, automate follow-ups, and launch campaigns from one polished command center.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet" />
-      </head>
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${displayFont.variable} ${bodyFont.variable}`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

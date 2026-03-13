@@ -1,29 +1,33 @@
-/**
- * lib/supabase.ts — Single shared Supabase client
- *
- * Uses @supabase/supabase-js directly (no SSR package).
- * Stores session in localStorage. onAuthStateChange auto-refreshes
- * the access token before it expires — sessions last 60 days.
- */
-import { createClient as _createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
-// Singleton — reuse the same client across the app
-let _client: ReturnType<typeof _createClient> | null = null;
+let browserClient: ReturnType<typeof createBrowserClient> | null = null;
+
+function getSupabaseConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !publishableKey) {
+    throw new Error("Supabase environment variables are missing.");
+  }
+
+  return { url, publishableKey };
+}
 
 export function createClient() {
-  if (!_client) {
-    _client = _createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession:     true,   // keep session across page reloads
-          storageKey:         "rf_session",
-          autoRefreshToken:   true,   // silently refresh before 1h expiry ← the fix
-          detectSessionInUrl: true,   // handles magic link / OAuth callbacks
-        },
-      }
-    );
+  if (!browserClient) {
+    const { url, publishableKey } = getSupabaseConfig();
+    browserClient = createBrowserClient(url, publishableKey, {
+      auth: {
+        storageKey: "rf_session",
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        persistSession: true,
+        flowType: "pkce",
+      },
+    });
   }
-  return _client;
+
+  return browserClient;
 }
