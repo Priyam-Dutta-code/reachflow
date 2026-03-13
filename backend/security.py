@@ -48,13 +48,11 @@ def build_preview_origin_regex(frontend_url: str, explicit_regex: str) -> Option
 
 
 def build_allowed_hosts(api_url: str) -> list[str]:
-    hosts = {"localhost", "127.0.0.1"}
+    hosts = {"localhost", "127.0.0.1", "*.onrender.com"}
     parsed = urlparse(api_url.strip())
     if parsed.netloc:
         host = parsed.netloc.split(":")[0]
         hosts.add(host)
-        if host.endswith(".onrender.com"):
-            hosts.add("*.onrender.com")
     return sorted(hosts)
 
 
