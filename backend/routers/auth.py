@@ -7,6 +7,7 @@ import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from jwt import PyJWKClient
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from config import SUPABASE_JWT_SECRET, SUPABASE_URL
@@ -99,6 +100,11 @@ def get_current_user(
         raise HTTPException(401, "Invalid token payload")
 
     user = db.query(User).filter(User.id == user_id).first()
+    if not user and email:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            print(f"[auth] Reusing existing user row {user.id} for verified email {email} (token sub {user_id})")
+
     if not user:
         defaults = PLAN_DEFAULTS[PlanType.free]
         metadata = payload.get("user_metadata") or {}
@@ -114,9 +120,17 @@ def get_current_user(
             emails_sent=0,
         )
         db.add(user)
-        db.commit()
-        db.refresh(user)
-        print(f"[auth] Auto-created user row for {email}")
+        try:
+            db.commit()
+            db.refresh(user)
+            print(f"[auth] Auto-created user row for {email}")
+        except IntegrityError:
+            db.rollback()
+            if email:
+                user = db.query(User).filter(User.email == email).first()
+            if not user:
+                raise
+            print(f"[auth] Recovered existing user row {user.id} after duplicate insert for {email}")
 
     _migrate_sensitive_fields(user, db)
     return user
