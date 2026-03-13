@@ -62,6 +62,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   };
 
+  const activeItem = NAV.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  const currentSection = activeItem?.label ?? "Workspace";
+
   return (
     <div className="app-shell">
       <div className="relative mx-auto flex min-h-screen w-full max-w-[1600px] gap-4 px-4 py-4 md:px-6 md:py-6">
@@ -169,20 +172,46 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </motion.aside>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="shell-card flex items-center justify-between px-4 py-3 md:hidden">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-bold text-slate-950">
-                R
+          <div className="shell-card flex items-center justify-between gap-3 px-4 py-3 md:px-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <Link href="/" className="flex items-center gap-3 md:hidden">
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-bold text-slate-950">
+                  R
+                </div>
+                <div className="font-display text-lg font-semibold">ReachFlow</div>
+              </Link>
+
+              <div className="hidden min-w-0 md:block">
+                <div className="text-xs uppercase tracking-[0.28em] text-white/40">Workspace</div>
+                <div className="mt-1 font-display text-2xl font-semibold tracking-[-0.04em] text-white">
+                  {currentSection}
+                </div>
               </div>
-              <div className="font-display text-lg font-semibold">ReachFlow</div>
-            </Link>
-            <button
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white"
-              onClick={() => setMenuOpen(true)}
-              type="button"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="hidden max-w-[260px] items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/65 lg:flex">
+                <ShieldCheck className="h-4 w-4 text-[var(--accent)]" />
+                <span className="truncate">{user.email}</span>
+              </div>
+
+              <button
+                className="secondary-button !justify-center !px-4 !py-2.5"
+                onClick={handleLogout}
+                type="button"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign out</span>
+              </button>
+
+              <button
+                className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white md:hidden"
+                onClick={() => setMenuOpen(true)}
+                type="button"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <main className="shell-card relative min-h-[calc(100vh-2rem)] flex-1 overflow-hidden p-4 md:p-6 lg:p-8">
