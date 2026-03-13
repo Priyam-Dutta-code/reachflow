@@ -6,10 +6,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
+from config import ENABLE_BACKGROUND_WORKER
 from database import Campaign, Lead, LeadStatus, User, get_db
 from routers.auth import get_current_user
 from security import enforce_rate_limit
 from services.campaign_service import sync_campaign_stats
+from services.lead_gen_service import LeadGenerationError
 from tasks import run_lead_gen_task
 
 router = APIRouter()
@@ -44,6 +46,16 @@ class LeadGenRequest(BaseModel):
     portal: JobPortal = JobPortal.naukri
     max: int = Field(default=50, ge=1, le=200)
     campaign_id: Optional[int] = None
+
+
+SOURCE_LABELS = {
+    "google_maps": "Google Maps",
+    "linkedin_selenium": "LinkedIn browser search",
+    "apollo": "Apollo",
+    "naukri": "Naukri",
+    "indeed": "Indeed",
+    "linkedin_jobs": "LinkedIn Jobs",
+}
 
 
 class LeadUpdate(BaseModel):
@@ -82,10 +94,28 @@ def generate_leads(
 
     payload = body.model_dump()
     payload["max"] = min(body.max, remaining_quota)
-    background_tasks.add_task(run_lead_gen_task, current_user.id, payload)
+    if ENABLE_BACKGROUND_WORKER:
+        background_tasks.add_task(run_lead_gen_task, current_user.id, payload)
+        return {
+            "message": "Lead generation has been queued.",
+            "status": "running",
+            "max_results": payload["max"],
+        }
+
+    try:
+        result = run_lead_gen_task(current_user.id, payload) or {}
+    except LeadGenerationError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    source_used = SOURCE_LABELS.get(result.get("source_used"), "the selected source")
+    added = result.get("added", 0)
+    message = f"Imported {added} lead{'s' if added != 1 else ''} from {source_used}."
+    if result.get("duplicates_skipped"):
+        message += f" Skipped {result['duplicates_skipped']} duplicate{'s' if result['duplicates_skipped'] != 1 else ''}."
+
     return {
-        "message": "Lead generation started in the background",
-        "status": "running",
+        **result,
+        "message": message,
         "max_results": payload["max"],
     }
 

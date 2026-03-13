@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Eye, Filter, Sparkles, Target } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, Filter, Sparkles, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Reveal } from "@/components/Reveal";
@@ -9,10 +9,22 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const SOURCE_DETAILS = {
-  google_maps: "Best for local businesses and agencies.",
-  linkedin: "Use for people-first prospecting and recruiter style searches.",
-  apollo: "Great when you already know titles, sectors, or ICP patterns.",
-  job_portal: "Useful for hiring and recruiter-oriented outreach workflows.",
+  google_maps: {
+    description: "Discover local companies and location-based prospects.",
+    note: "Requires a Google Maps API key.",
+  },
+  linkedin: {
+    description: "Target people-first prospecting, founders, and decision-makers.",
+    note: "Browser mode needs sender credentials. Apollo mode needs an Apollo key.",
+  },
+  apollo: {
+    description: "Pull tightly filtered title-based lists when Apollo is connected.",
+    note: "Requires an Apollo API key.",
+  },
+  job_portal: {
+    description: "Capture companies actively hiring for the roles you want to reach.",
+    note: "Best free-mode option: LinkedIn Jobs.",
+  },
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -30,17 +42,18 @@ export default function LeadsPage() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<any>(null);
   const [previewLeadId, setPreviewLeadId] = useState<number | null>(null);
   const { session } = useAuth();
 
   const [form, setForm] = useState({
-    source: "google_maps",
+    source: "job_portal",
     query: "",
     location: "",
     industry: "",
     method: "selenium",
-    portal: "naukri",
+    portal: "linkedin_jobs",
     max: 40,
     campaign_id: "",
   });
@@ -77,13 +90,15 @@ export default function LeadsPage() {
 
   const generateLeads = async () => {
     if (!form.query.trim()) {
+      setError("Enter a role, keyword, or search term before importing leads.");
       return;
     }
 
     setLoading(true);
     setError("");
+    setMessage("");
     try {
-      await apiFetch("/api/leads/generate", {
+      const response = await apiFetch("/api/leads/generate", {
         method: "POST",
         body: JSON.stringify({
           ...form,
@@ -91,7 +106,14 @@ export default function LeadsPage() {
           campaign_id: form.campaign_id ? Number(form.campaign_id) : null,
         }),
       });
-      await load(1, status);
+
+      const nextMessage = [response.message, response.warning].filter(Boolean).join(" ");
+      setMessage(nextMessage);
+
+      if (response.status === "completed") {
+        setPage(1);
+        await load(1, status);
+      }
     } catch (requestError: any) {
       setError(requestError.message);
     } finally {
@@ -143,22 +165,28 @@ export default function LeadsPage() {
             <div>
               <div className="section-label">Lead studio</div>
               <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Generate, sort, and attach leads without breaking flow.
+                Build high-intent prospect lists your team can use immediately.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-                This view now treats campaigns as first-class. Generate directly into a campaign, preview the email for
-                any lead, and keep the pipeline ready to send.
+                Import fresh leads, route them into the right campaign, and preview the outreach before your team
+                launches the next batch.
               </p>
             </div>
             <div className="glass-card flex items-center gap-4 px-5 py-4">
               <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-white/45">Lead count</div>
+                <div className="text-xs uppercase tracking-[0.24em] text-white/45">Prospect records</div>
                 <div className="mt-2 font-display text-4xl font-semibold tracking-[-0.04em]">{total}</div>
               </div>
               <Target className="h-8 w-8 text-[var(--accent)]" />
             </div>
           </div>
         </Reveal>
+
+        {message && (
+          <div className="rounded-[24px] border border-emerald-300/18 bg-emerald-300/10 px-5 py-4 text-sm leading-7 text-emerald-100">
+            {message}
+          </div>
+        )}
 
         {error && (
           <div className="rounded-[24px] border border-[rgba(255,140,140,0.24)] bg-[rgba(255,140,140,0.08)] px-5 py-4 text-sm leading-7 text-[var(--danger)]">
@@ -174,9 +202,13 @@ export default function LeadsPage() {
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="font-display text-2xl font-semibold tracking-[-0.04em]">Generate new leads</div>
-                  <div className="text-sm text-white/60">{sourceDetail}</div>
+                  <div className="font-display text-2xl font-semibold tracking-[-0.04em]">Import new leads</div>
+                  <div className="text-sm text-white/60">{sourceDetail.description}</div>
                 </div>
+              </div>
+
+              <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-7 text-white/70">
+                {sourceDetail.note}
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -185,17 +217,17 @@ export default function LeadsPage() {
                   onChange={(event) => setForm({ ...form, source: event.target.value })}
                   value={form.source}
                 >
+                  <option value="job_portal">Job portals</option>
                   <option value="google_maps">Google Maps</option>
                   <option value="linkedin">LinkedIn</option>
                   <option value="apollo">Apollo</option>
-                  <option value="job_portal">Job portals</option>
                 </select>
                 <select
                   className="field w-full"
                   onChange={(event) => setForm({ ...form, campaign_id: event.target.value })}
                   value={form.campaign_id}
                 >
-                  <option value="">No campaign yet</option>
+                  <option value="">Keep unassigned for now</option>
                   {campaignOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -205,23 +237,23 @@ export default function LeadsPage() {
                 <input
                   className="field w-full md:col-span-2"
                   onChange={(event) => setForm({ ...form, query: event.target.value })}
-                  placeholder="Search query, title, or prospect type"
+                  placeholder="Role, keyword, or target buyer type"
                   value={form.query}
                 />
                 <input
                   className="field w-full"
                   onChange={(event) => setForm({ ...form, location: event.target.value })}
-                  placeholder="Location"
+                  placeholder="City, region, or market"
                   value={form.location}
                 />
                 <input
                   className="field w-full"
                   onChange={(event) => setForm({ ...form, industry: event.target.value })}
-                  placeholder="Industry or niche"
+                  placeholder="Industry, niche, or ICP"
                   value={form.industry}
                 />
 
-                {(form.source === "linkedin" || form.source === "job_portal") && (
+                {form.source === "linkedin" && (
                   <select
                     className="field w-full"
                     onChange={(event) => setForm({ ...form, method: event.target.value })}
@@ -238,9 +270,9 @@ export default function LeadsPage() {
                     onChange={(event) => setForm({ ...form, portal: event.target.value })}
                     value={form.portal}
                   >
+                    <option value="linkedin_jobs">LinkedIn Jobs</option>
                     <option value="naukri">Naukri</option>
                     <option value="indeed">Indeed</option>
-                    <option value="linkedin_jobs">LinkedIn Jobs</option>
                   </select>
                 )}
 
@@ -255,7 +287,7 @@ export default function LeadsPage() {
               </div>
 
               <button className="primary-button mt-6" disabled={loading} onClick={generateLeads} type="button">
-                {loading ? "Starting generation..." : "Generate leads"}
+                {loading ? "Importing leads..." : "Import leads"}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -263,12 +295,12 @@ export default function LeadsPage() {
 
           <Reveal delay={0.08}>
             <div className="glass-card p-6">
-              <div className="section-label !px-3 !py-1.5 !text-[10px]">Campaign-ready guidance</div>
+              <div className="section-label !px-3 !py-1.5 !text-[10px]">Operator playbook</div>
               <div className="mt-5 space-y-4">
                 {[
-                  "Create a campaign first if you want new leads to be send-ready immediately.",
-                  "Preview the generated email from any lead row before launching a campaign batch.",
-                  "Use status filters to separate untouched leads from already-contacted prospects.",
+                  "Start with LinkedIn Jobs for the most dependable free lead imports.",
+                  "Attach leads to a campaign when you want sales-ready segments instead of a raw list.",
+                  "Preview the email copy from any row before you launch outreach to a new audience.",
                 ].map((item) => (
                   <div
                     key={item}
@@ -277,6 +309,10 @@ export default function LeadsPage() {
                     {item}
                   </div>
                 ))}
+              </div>
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-emerald-100">
+                <CheckCircle2 className="h-4 w-4" />
+                Client-ready sourcing workflow
               </div>
             </div>
           </Reveal>
@@ -307,7 +343,7 @@ export default function LeadsPage() {
               </div>
               <div className="inline-flex items-center gap-2 text-sm text-white/55">
                 <Filter className="h-4 w-4" />
-                Filter the pipeline and keep campaign inputs clean.
+                Keep prospect lists clean and campaign-ready.
               </div>
             </div>
 
@@ -372,7 +408,7 @@ export default function LeadsPage() {
 
               {!leads.length && (
                 <div className="px-6 py-16 text-center text-sm text-white/45">
-                  No leads yet. Generate a batch above and attach them to a campaign when you can.
+                  No leads imported yet. Start with LinkedIn Jobs, then assign the strongest prospects to a campaign.
                 </div>
               )}
             </div>
@@ -418,7 +454,7 @@ export default function LeadsPage() {
             <div className="glass-card p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <div className="section-label !px-3 !py-1.5 !text-[10px]">Email preview</div>
+                  <div className="section-label !px-3 !py-1.5 !text-[10px]">Draft preview</div>
                   <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">{preview.subject}</h2>
                   <p className="mt-3 text-sm text-white/55">
                     To: {preview.to || "No email"} {preview.company ? `• ${preview.company}` : ""}

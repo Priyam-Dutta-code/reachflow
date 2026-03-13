@@ -40,20 +40,20 @@ export default function DashboardPage() {
     {
       href: "/leads",
       icon: Target,
-      title: "Generate leads",
-      description: "Choose a source, attach the results to a campaign, and build the next batch.",
+      title: "Build lead lists",
+      description: "Import fresh prospects, qualify the best matches, and feed the next campaign.",
     },
     {
       href: "/campaigns",
       icon: Sparkles,
       title: "Launch campaigns",
-      description: "Review eligible leads, trigger sending, and keep follow-up timing under control.",
+      description: "Turn qualified leads into outbound sequences with volume and follow-up control.",
     },
     {
       href: "/analytics",
       icon: BarChart3,
-      title: "Read the funnel",
-      description: "See lead volume, email coverage, sent volume, and reply performance in one view.",
+      title: "Track performance",
+      description: "Monitor sourcing quality, delivery volume, and reply momentum in one view.",
     },
   ];
 
@@ -89,11 +89,11 @@ export default function DashboardPage() {
             <div>
               <div className="section-label">Overview</div>
               <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Welcome back, {profile?.sender_name || user?.email?.split("@")[0] || "operator"}.
+                Good to see you, {profile?.sender_name || user?.email?.split("@")[0] || "team"}.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-                The dashboard now centers the actual work: configure the sender, generate leads into campaigns, preview
-                the AI output, and monitor results without leaving the workspace.
+                Run prospecting, campaign execution, and performance review from one clean operating layer built for
+                outbound teams.
               </p>
             </div>
 
@@ -135,7 +135,7 @@ export default function DashboardPage() {
                 <div>
                   <div className="section-label !px-3 !py-1.5 !text-[10px]">Setup checklist</div>
                   <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">
-                    {setupItems.length ? "A few things still need attention." : "Workspace is ready to run."}
+                    {setupItems.length ? "A few items still need attention." : "Your workspace is ready to run."}
                   </h2>
                 </div>
                 <Mail className="hidden h-8 w-8 text-[var(--accent)] md:block" />

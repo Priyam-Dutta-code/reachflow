@@ -91,13 +91,13 @@ export default function SignupPage() {
       <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="glass-card hidden p-10 lg:flex lg:flex-col lg:justify-between">
           <div>
-            <div className="section-label">Build the whole flow</div>
+            <div className="section-label">Start strong</div>
             <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em]">
-              Create the account, then shape the sender persona.
+              Create your workspace and launch outbound with confidence.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-8 text-white/65">
-              Your profile powers the email tone, signature, and targeting context. You can refine it later from
-              Settings.
+              Your profile shapes how ReachFlow writes, personalizes, and signs every outbound message. You can refine
+              it any time from Settings.
             </p>
           </div>
 
@@ -145,12 +145,12 @@ export default function SignupPage() {
 
           <div className="mt-8">
             <h2 className="font-display text-4xl font-semibold tracking-[-0.05em]">
-              {step === "account" ? "Create your account" : "Tune your sender profile"}
+              {step === "account" ? "Create your account" : "Set your sender profile"}
             </h2>
             <p className="mt-3 text-sm leading-7 text-white/65">
               {step === "account"
-                ? "Start with the basics. You can add sending credentials and voice guidance in the next step."
-                : "These fields make the AI outputs feel more like you and less like a template."}
+                ? "Start with the essentials. You can add sending credentials and AI context in the next step."
+                : "These details help every email sound sharper, more credible, and more on-brand."}
             </p>
           </div>
 

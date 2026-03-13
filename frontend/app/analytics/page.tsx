@@ -45,11 +45,11 @@ export default function AnalyticsPage() {
           <div>
             <div className="section-label">Analytics</div>
             <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-              Read the funnel, not just the raw numbers.
+              Measure the pipeline with clarity.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-              This dashboard helps you understand where your outreach pipeline is working: sourcing quality, email
-              coverage, send volume, and the conversion to replies.
+              Track lead volume, sourcing quality, send performance, and reply movement so your team can improve with
+              confidence.
             </p>
           </div>
         </Reveal>
@@ -103,7 +103,7 @@ export default function AnalyticsPage() {
                           </div>
                         ))
                       ) : (
-                        <div className="m-auto text-sm text-white/45">Launch a campaign to populate this chart.</div>
+                        <div className="m-auto text-sm text-white/45">Launch a campaign to start building performance data.</div>
                       )}
                     </div>
                   </div>

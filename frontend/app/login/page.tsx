@@ -40,10 +40,10 @@ function LoginForm() {
           <div>
             <div className="section-label">Welcome back</div>
             <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em]">
-              Step into your outreach control room.
+              Step into your outbound command center.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-8 text-white/65">
-              ReachFlow keeps prospecting, campaign setup, and follow-up automation inside one focused workflow.
+              Manage sourcing, campaign execution, and follow-up from one premium workspace built for modern outreach.
             </p>
           </div>
           <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
@@ -67,7 +67,7 @@ function LoginForm() {
             </Link>
             <h2 className="mt-8 font-display text-4xl font-semibold tracking-[-0.05em]">Log in</h2>
             <p className="mt-3 text-sm leading-7 text-white/65">
-              Pick up where you left off and continue building campaigns that are ready to ship.
+              Access your live pipeline, active campaigns, and sending controls in seconds.
             </p>
           </div>
 

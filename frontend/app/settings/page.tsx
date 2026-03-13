@@ -75,7 +75,7 @@ export default function SettingsPage() {
       });
       setProfile(data.user);
       setForm((current) => ({ ...current, gmail_password: "", groq_api_key: "" }));
-      setMessage("Profile updated. Sensitive fields are stored encrypted on the backend.");
+      setMessage("Settings updated successfully. Sensitive fields remain encrypted on the backend.");
     } catch (requestError: any) {
       setError(requestError.message);
     } finally {
@@ -90,11 +90,11 @@ export default function SettingsPage() {
           <div>
             <div className="section-label">Settings</div>
             <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-              Shape how ReachFlow writes and sends.
+              Configure the identity behind every campaign.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-              Keep your sender identity, AI context, and optional credentials in one place. Gmail and Groq values are
-              never shown back in plain text after save.
+              Keep your sender profile, personalization context, and optional credentials in one secure place. Gmail
+              and Groq values are never shown back in plain text after save.
             </p>
           </div>
         </Reveal>
@@ -219,7 +219,7 @@ export default function SettingsPage() {
               <div className="glass-card p-6">
                 <div className="flex items-center gap-3">
                   <LockKeyhole className="h-5 w-5 text-[var(--accent)]" />
-                  <div className="font-display text-2xl font-semibold tracking-[-0.04em]">Security notes</div>
+                  <div className="font-display text-2xl font-semibold tracking-[-0.04em]">Security posture</div>
                 </div>
                 <div className="mt-5 space-y-3 text-sm leading-7 text-white/68">
                   <p>Stored Gmail app passwords and Groq keys are encrypted on the backend before persistence.</p>
@@ -228,7 +228,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="mt-5 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/45">
                   <ShieldCheck className="h-4 w-4" />
-                  Production hygiene improved
+                  Enterprise-minded foundation
                 </div>
               </div>
             </div>

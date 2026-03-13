@@ -1,11 +1,7 @@
 """
-services/lead_gen_service.py — Lead Generation Router
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Called by Celery worker (tasks.py) to run scraping jobs.
-Routes to the correct scraper based on the source param.
+services/lead_gen_service.py - Lead generation routing and source fallbacks.
 """
 
-import os
 import re
 import time
 import requests
@@ -24,9 +20,33 @@ EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 SKIP_DOMAINS = {"example.com","domain.com","yourdomain.com","sentry.io",
                 "wix.com","wordpress.com","png","jpg","gif","svg"}
 
+PORTAL_LABELS = {
+    "naukri": "Naukri",
+    "indeed": "Indeed",
+    "linkedin_jobs": "LinkedIn Jobs",
+}
 
-def run_lead_gen(params: dict) -> list:
-    """Entry point called by tasks.py. Routes to correct scraper."""
+
+class LeadGenerationError(Exception):
+    """Raised when lead generation cannot run or yields no usable output."""
+
+
+def _build_result(
+    leads: list,
+    source_requested: str,
+    source_used: str,
+    warning: str | None = None,
+) -> dict:
+    return {
+        "leads": leads,
+        "source_requested": source_requested,
+        "source_used": source_used,
+        "warning": warning,
+    }
+
+
+def run_lead_gen(params: dict) -> dict:
+    """Run lead generation and return leads plus source metadata."""
     source   = params.get("source", "google_maps")
     query    = params.get("query", "")
     location = params.get("location", "")
@@ -36,18 +56,81 @@ def run_lead_gen(params: dict) -> list:
     max_r    = int(params.get("max", 50))
 
     if source == "google_maps":
-        return scrape_google_maps(query, location, max_r)
-    elif source == "linkedin":
+        if not GOOGLE_MAPS_API_KEY:
+            raise LeadGenerationError(
+                "Google Maps needs a Google Maps API key. Add one in Settings or switch to LinkedIn Jobs."
+            )
+        leads = scrape_google_maps(query, location, max_r)
+        if not leads:
+            raise LeadGenerationError(
+                "No Google Maps leads were found for that search. Try a broader query or a nearby location."
+            )
+        return _build_result(leads, source_requested=source, source_used="google_maps")
+
+    if source == "linkedin":
         if method == "apollo":
-            return scrape_apollo(query, industry, location, max_r)
-        else:
-            return scrape_linkedin_selenium(query, industry, location, max_r)
-    elif source == "job_portal":
-        return scrape_job_portal(portal, query, location, max_r)
-    elif source == "apollo":
-        return scrape_apollo(query, industry, location, max_r)
-    else:
-        return []
+            if not APOLLO_API_KEY:
+                raise LeadGenerationError(
+                    "Apollo lookup needs an Apollo API key. Add one in Settings or switch to LinkedIn Jobs."
+                )
+            leads = scrape_apollo(query, industry, location, max_r)
+            if not leads:
+                raise LeadGenerationError(
+                    "Apollo did not return any matches. Try a broader title, industry, or location."
+                )
+            return _build_result(leads, source_requested=source, source_used="apollo")
+
+        if not SENDER_EMAIL or not GMAIL_PASSWORD:
+            raise LeadGenerationError(
+                "Browser-assisted LinkedIn search needs sender email and Gmail app password. Add them in Settings or use LinkedIn Jobs."
+            )
+        leads = scrape_linkedin_selenium(query, industry, location, max_r)
+        if not leads:
+            raise LeadGenerationError(
+                "LinkedIn search did not return any prospects. Try a broader title or use LinkedIn Jobs."
+            )
+        return _build_result(leads, source_requested=source, source_used="linkedin_selenium")
+
+    if source == "job_portal":
+        leads = scrape_job_portal(portal, query, location, max_r)
+        source_used = portal
+        warning = None
+
+        if not leads and portal != "linkedin_jobs":
+            fallback_leads = scrape_job_portal("linkedin_jobs", query, location, max_r)
+            if fallback_leads:
+                leads = fallback_leads
+                source_used = "linkedin_jobs"
+                warning = (
+                    f"{PORTAL_LABELS.get(portal, portal)} returned no accessible results, "
+                    "so ReachFlow switched this run to LinkedIn Jobs."
+                )
+
+        if not leads:
+            raise LeadGenerationError(
+                "No leads were found for that search. Try LinkedIn Jobs, a broader title, or a different location."
+            )
+
+        return _build_result(
+            leads,
+            source_requested=source,
+            source_used=source_used,
+            warning=warning,
+        )
+
+    if source == "apollo":
+        if not APOLLO_API_KEY:
+            raise LeadGenerationError(
+                "Apollo source needs an Apollo API key. Add one in Settings or switch to LinkedIn Jobs."
+            )
+        leads = scrape_apollo(query, industry, location, max_r)
+        if not leads:
+            raise LeadGenerationError(
+                "Apollo did not return any matches. Try a broader title, industry, or location."
+            )
+        return _build_result(leads, source_requested=source, source_used="apollo")
+
+    raise LeadGenerationError("This lead source is not available right now. Please choose another source.")
 
 
 # ─────────────────────────────────────────────────────────

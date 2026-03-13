@@ -111,10 +111,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <div className="mb-6 rounded-[24px] border border-white/10 bg-white/5 p-4">
             <div className="section-label !px-3 !py-1.5 !text-[10px]">Workspace secured</div>
             <div className="mt-4 text-2xl font-display font-semibold tracking-[-0.04em]">
-              Launch faster with clear next steps.
+              Keep your pipeline moving every day.
             </div>
             <p className="mt-3 text-sm leading-6 text-white/65">
-              Generate leads, assign them to campaigns, preview the AI email, then ship.
+              Source leads, organize campaigns, approve messaging, and track execution from one workspace.
             </p>
           </div>
 

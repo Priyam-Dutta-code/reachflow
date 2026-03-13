@@ -2,9 +2,9 @@
 
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { Reveal } from "@/components/Reveal";
 import { apiFetch } from "@/lib/api";
@@ -117,10 +117,10 @@ export default function PricingPage() {
               Cashfree-verified checkout
             </div>
             <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em] md:text-6xl">
-              Price the product like it deserves to ship.
+              Choose the plan that matches your outbound ambition.
             </h1>
             <p className="mt-5 text-base leading-8 text-white/65 md:text-lg">
-              Every paid plan keeps the lead engine, AI outreach workflow, analytics, and campaign controls in one
+              Every paid tier keeps lead sourcing, personalized outreach, campaign control, and analytics inside one
               polished workspace.
             </p>
           </div>
@@ -135,14 +135,12 @@ export default function PricingPage() {
         <div className="mt-12 grid gap-5 lg:grid-cols-4">
           {plans.map((plan, index) => (
             <Reveal key={plan.id} delay={index * 0.05}>
-              <div
-                className={`glass-card h-full p-6 ${plan.popular ? "border-[rgba(139,243,216,0.3)]" : ""}`}
-              >
+              <div className={`glass-card h-full p-6 ${plan.popular ? "border-[rgba(139,243,216,0.3)]" : ""}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="font-display text-2xl font-semibold tracking-[-0.04em]">{plan.name}</div>
                     <div className="mt-3 font-display text-4xl font-semibold tracking-[-0.04em]">
-                      {plan.amount ? `₹${plan.amount}` : "Free"}
+                      {plan.amount ? `Rs ${plan.amount}` : "Free"}
                     </div>
                     <div className="text-sm text-white/55">{plan.per}</div>
                   </div>
@@ -181,15 +179,18 @@ export default function PricingPage() {
             <div className="glass-card mt-8 flex flex-col gap-5 p-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="section-label !px-3 !py-1.5 !text-[10px]">Top-up</div>
-                <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">
-                  {creditPack.name}
-                </h2>
+                <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">{creditPack.name}</h2>
                 <p className="mt-3 text-sm leading-7 text-white/65">
-                  Ideal when you want to keep sending without changing plans.
+                  Ideal for teams that want to keep campaigns active without changing plans.
                 </p>
               </div>
-              <button className="primary-button" disabled={loading === creditPack.id} onClick={() => startCheckout(creditPack.id)} type="button">
-                {loading === creditPack.id ? "Opening..." : `Buy for ₹${creditPack.amount}`}
+              <button
+                className="primary-button"
+                disabled={loading === creditPack.id}
+                onClick={() => startCheckout(creditPack.id)}
+                type="button"
+              >
+                {loading === creditPack.id ? "Opening..." : `Buy for Rs ${creditPack.amount}`}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>

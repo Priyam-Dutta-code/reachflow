@@ -110,11 +110,11 @@ export default function CampaignsPage() {
             <div>
               <div className="section-label">Campaign control</div>
               <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Turn attached leads into launch-ready campaigns.
+                Launch polished outbound campaigns with clear sending control.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-                Campaigns now highlight eligible leads and show when a workflow is missing the inputs it needs to send
-                cleanly.
+                Organize lead segments, manage send volume, and keep every campaign accountable from first draft to
+                reply.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -149,7 +149,7 @@ export default function CampaignsPage() {
               <textarea
                 className="textarea-field min-h-[130px] w-full md:col-span-2"
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
-                placeholder="What is this campaign trying to accomplish?"
+                placeholder="Define the offer, audience, or angle for this campaign."
                 value={form.description}
               />
               <input
@@ -202,7 +202,7 @@ export default function CampaignsPage() {
                         <span className={`status-pill ${statusClass}`}>{campaign.status}</span>
                       </div>
                       <p className="mt-3 max-w-3xl text-sm leading-7 text-white/65">
-                        {campaign.description || "No description yet. Use this campaign to organize one specific outreach angle."}
+                        {campaign.description || "No campaign brief yet. Add the audience, offer, or outreach angle to keep execution aligned."}
                       </p>
 
                       <div className="mt-5 grid gap-3 md:grid-cols-4">
@@ -258,8 +258,8 @@ export default function CampaignsPage() {
 
                   {campaign.eligible_leads === 0 && (
                     <div className="mt-5 rounded-[22px] border border-amber-400/15 bg-amber-400/10 px-4 py-4 text-sm leading-7 text-amber-100">
-                      This campaign has no send-ready leads attached yet. Head to Lead Studio and assign leads to this campaign
-                      before launching.
+                      This campaign does not have any send-ready leads yet. Head to Lead Studio and attach qualified
+                      prospects before you launch.
                     </div>
                   )}
                 </div>
@@ -276,8 +276,8 @@ export default function CampaignsPage() {
               </div>
               <h2 className="mt-6 font-display text-3xl font-semibold tracking-[-0.04em]">No campaigns yet</h2>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/65">
-                Create a campaign first, then attach leads from Lead Studio so the sending workflow has context and
-                clear ownership.
+                Create your first campaign to define the message, audience, and sending pace before you activate
+                outbound.
               </p>
               <button className="primary-button mt-6" onClick={() => setShowNew(true)} type="button">
                 <Plus className="h-4 w-4" />

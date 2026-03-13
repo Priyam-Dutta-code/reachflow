@@ -8,27 +8,27 @@ import { Reveal } from "@/components/Reveal";
 
 const FEATURE_CARDS = [
   {
-    title: "Prospect across multiple sources",
+    title: "Source prospects from live intent channels",
     description:
-      "Pull fresh leads from Google Maps, Apollo, LinkedIn workflows, and job portals without juggling five browser tabs.",
+      "Pull fresh leads from Google Maps, Apollo, LinkedIn workflows, and job portals without juggling multiple disconnected tools.",
     icon: Target,
   },
   {
-    title: "Generate outreach that sounds human",
+    title: "Send outreach that sounds credible",
     description:
-      "ReachFlow uses your profile, target company context, and campaign intent to produce personalized cold emails instead of generic spam.",
+      "ReachFlow uses your sender profile, target context, and campaign angle to produce personalized outreach that feels deliberate instead of generic.",
     icon: WandSparkles,
   },
   {
-    title: "Launch campaigns with control",
+    title: "Launch campaigns with guardrails",
     description:
-      "Set volume caps, follow-up timing, and campaign grouping so outreach remains organized, safe, and easy to iterate.",
+      "Set volume caps, follow-up timing, and campaign grouping so every send stays organized, safe, and measurable.",
     icon: Mail,
   },
   {
-    title: "Track funnel health in one place",
+    title: "Track performance from one dashboard",
     description:
-      "See which sources convert, how many leads have valid emails, and where reply rates are rising or stalling.",
+      "See which sources convert, how many leads have valid emails, and where reply rates are accelerating or stalling.",
     icon: BarChart3,
   },
 ];
@@ -36,21 +36,21 @@ const FEATURE_CARDS = [
 const WORKFLOW = [
   {
     step: "01",
-    title: "Capture leads into a campaign",
+    title: "Capture leads into the right campaign",
     description:
-      "Generate leads straight into a campaign so your sales or hiring workflow stays aligned from the first search.",
+      "Import leads straight into a campaign so sales, recruiting, or outbound teams stay aligned from the first search.",
   },
   {
     step: "02",
-    title: "Preview AI email quality before launch",
+    title: "Approve the message before launch",
     description:
-      "Review the exact message for any lead, adjust your sender profile, and only then push the campaign live.",
+      "Preview the exact message for any lead, refine the sender profile, and launch only when the copy is ready.",
   },
   {
     step: "03",
-    title: "Automate follow-up without losing oversight",
+    title: "Scale follow-up without losing oversight",
     description:
-      "Credits, reply checks, and follow-up timing stay visible inside the app, not buried in background jobs.",
+      "Credits, reply checks, and follow-up timing stay visible inside the product so operators stay in control.",
   },
 ];
 
@@ -107,24 +107,23 @@ export default function LandingPage() {
           <Reveal>
             <div className="section-label">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Hardened workflows, sharper UX
+              Secure, polished, client-ready
             </div>
           </Reveal>
 
           <Reveal delay={0.08}>
             <h1 className="headline text-balance">
-              Your outreach engine,
+              Grow outbound with one
               <span className="block bg-[linear-gradient(135deg,#8bf3d8,#48e1ff,#ffbb8b)] bg-clip-text text-transparent">
-                now built to sell.
+                premium operating system.
               </span>
             </h1>
           </Reveal>
 
           <Reveal delay={0.14}>
             <p className="subheadline">
-              ReachFlow is a full-stack outreach workspace for finding prospects, drafting tailored emails,
-              assigning them to campaigns, automating follow-ups, and monitoring the funnel from one responsive
-              interface.
+              ReachFlow gives teams a single place to source prospects, personalize outreach, launch campaigns,
+              automate follow-up, and monitor pipeline performance from a responsive, production-ready interface.
             </p>
           </Reveal>
 
@@ -176,7 +175,7 @@ export default function LandingPage() {
                 <div>
                   <div className="section-label !px-3 !py-1.5 !text-[10px]">Live workflow map</div>
                   <div className="mt-3 font-display text-2xl font-semibold tracking-[-0.04em] md:text-[2rem]">
-                    Generate leads into campaigns, then preview before sending.
+                    Move from lead discovery to launch without losing context.
                   </div>
                 </div>
                 <Sparkles className="hidden h-9 w-9 text-[var(--accent)] md:block" />
@@ -203,9 +202,9 @@ export default function LandingPage() {
                           0{index + 1}
                         </div>
                         <div>
-                          <div className="text-xs uppercase tracking-[0.26em] text-white/45">{item.label}</div>
-                          <div className="mt-2 text-sm leading-6 text-white/78 md:text-base">{item.value}</div>
-                        </div>
+                    <div className="text-xs uppercase tracking-[0.26em] text-white/45">{item.label}</div>
+                    <div className="mt-2 text-sm leading-6 text-white/78 md:text-base">{item.value}</div>
+                  </div>
                       </motion.div>
                     ))}
                   </div>
@@ -245,7 +244,7 @@ export default function LandingPage() {
                       <div>
                         <div className="text-xs uppercase tracking-[0.28em] text-white/45">Quality gate</div>
                         <div className="mt-2 font-display text-xl font-semibold tracking-[-0.04em]">
-                          Preview every email before launch
+                          Review every message before it goes live
                         </div>
                       </div>
                       <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
@@ -273,14 +272,14 @@ export default function LandingPage() {
 
       <section className="section-wrap">
         <Reveal>
-          <div className="section-label">What the SaaS does well</div>
+          <div className="section-label">Built for revenue teams</div>
           <div className="mt-5 max-w-3xl">
             <h2 className="font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-              ReachFlow is strongest when the workflow stays connected end to end.
+              Everything important happens inside one connected workflow.
             </h2>
             <p className="mt-5 text-lg leading-8 text-white/65">
-              That means source selection, lead generation, campaign grouping, personalized email creation, and
-              performance tracking have to feel like one product instead of six forms.
+              Prospect sourcing, lead qualification, campaign creation, personalized messaging, and performance tracking
+              should feel like one product instead of five disconnected systems.
             </p>
           </div>
         </Reveal>
@@ -308,11 +307,11 @@ export default function LandingPage() {
           <Reveal>
             <div className="section-label">Workflow</div>
             <h2 className="mt-5 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-              A clearer path from search to send.
+              A faster path from search to send.
             </h2>
             <p className="mt-5 max-w-lg text-lg leading-8 text-white/65">
-              The app now emphasizes the actual work your buyers care about: sourcing better leads, assigning them
-              cleanly, and launching campaigns without ambiguity.
+              Give your team a cleaner operating rhythm: find better leads, assign them cleanly, and launch campaigns
+              with confidence.
             </p>
           </Reveal>
 
@@ -340,11 +339,11 @@ export default function LandingPage() {
             <div className="max-w-2xl">
               <div className="section-label">Ready for launch</div>
               <h2 className="mt-5 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Ship the polished version, not the prototype.
+                Present a product that feels ready on day one.
               </h2>
               <p className="mt-4 text-lg leading-8 text-white/65">
-                Secure backend behavior, tighter payment verification, a stronger campaign workflow, and a far more
-                premium interface make ReachFlow feel closer to a product people can trust with money.
+                ReachFlow combines a premium interface, secure backend behavior, controlled campaign workflows, and a
+                clear operator experience buyers can trust.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">

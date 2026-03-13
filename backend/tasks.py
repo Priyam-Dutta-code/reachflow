@@ -38,8 +38,8 @@ celery.conf.beat_schedule = {
 def run_lead_gen_task(user_id: str, params: dict):
     if ENABLE_BACKGROUND_WORKER:
         celery_lead_gen.delay(user_id, params)
-        return
-    _lead_gen_impl(user_id, params)
+        return {"status": "queued"}
+    return _lead_gen_impl(user_id, params)
 
 
 @celery.task(name="lead_gen")
@@ -57,7 +57,8 @@ def _lead_gen_impl(user_id: str, params: dict):
         db.close()
         return
 
-    leads = run_lead_gen(params)
+    result = run_lead_gen(params)
+    leads = result.get("leads", [])
     added = 0
 
     existing_emails = {
@@ -65,10 +66,12 @@ def _lead_gen_impl(user_id: str, params: dict):
         for record in db.query(Lead.email).filter(Lead.user_id == user_id, Lead.email != None).all()  # noqa: E711
         if record[0]
     }
+    duplicates_skipped = 0
 
     for lead_data in leads:
         email_address = (lead_data.get("email") or "").lower().strip()
         if email_address and email_address in existing_emails:
+            duplicates_skipped += 1
             continue
         if email_address:
             existing_emails.add(email_address)
@@ -99,6 +102,16 @@ def _lead_gen_impl(user_id: str, params: dict):
     db.commit()
     db.close()
     print(f"[LeadGen] +{added} leads for user {user_id}")
+    return {
+        "status": "completed",
+        "requested_source": result.get("source_requested"),
+        "source_used": result.get("source_used"),
+        "warning": result.get("warning"),
+        "total_found": len(leads),
+        "added": added,
+        "duplicates_skipped": duplicates_skipped,
+        "campaign_id": params.get("campaign_id"),
+    }
 
 
 def run_campaign_batch(user_id: str, campaign_id: int):
