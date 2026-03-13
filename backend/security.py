@@ -51,7 +51,10 @@ def build_allowed_hosts(api_url: str) -> list[str]:
     hosts = {"localhost", "127.0.0.1"}
     parsed = urlparse(api_url.strip())
     if parsed.netloc:
-        hosts.add(parsed.netloc.split(":")[0])
+        host = parsed.netloc.split(":")[0]
+        hosts.add(host)
+        if host.endswith(".onrender.com"):
+            hosts.add("*.onrender.com")
     return sorted(hosts)
 
 
