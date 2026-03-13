@@ -2,14 +2,9 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, BarChart3, Mail, ShieldCheck, Sparkles, Target, WandSparkles } from "lucide-react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 
 import { Reveal } from "@/components/Reveal";
-
-const HeroScene = dynamic(() => import("@/components/HeroScene"), {
-  ssr: false,
-});
 
 const FEATURE_CARDS = [
   {
@@ -63,6 +58,18 @@ const STATS = [
   { label: "Campaign-ready workspace", value: "1" },
   { label: "Core steps unified", value: "3" },
   { label: "Channels supported", value: "4+" },
+];
+
+const HERO_PIPELINE = [
+  { label: "Sources", value: "Maps, Apollo, LinkedIn" },
+  { label: "Scoring", value: "Fit + enrichment checks" },
+  { label: "Launch", value: "Preview before every send" },
+];
+
+const HERO_SIGNALS = [
+  { label: "Reply rate", value: "+18%" },
+  { label: "Valid emails", value: "91%" },
+  { label: "Launch time", value: "12 min" },
 ];
 
 export default function LandingPage() {
@@ -146,28 +153,121 @@ export default function LandingPage() {
         </div>
 
         <Reveal delay={0.16} className="relative">
-          <HeroScene />
-          <motion.div
-            className="glass-card absolute -bottom-6 left-6 right-6 p-5 md:left-10 md:right-10"
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45, duration: 0.7 }}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="section-label !px-3 !py-1.5 !text-[10px]">New product flow</div>
-                <div className="mt-3 font-display text-2xl font-semibold tracking-[-0.04em]">
-                  Generate leads into campaigns, then preview before sending.
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,26,0.98),rgba(8,14,26,0.78))] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.4)] md:min-h-[520px] md:p-8">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(139,243,216,0.22),transparent_26%),radial-gradient(circle_at_78%_20%,rgba(72,225,255,0.18),transparent_30%),radial-gradient(circle_at_55%_75%,rgba(255,187,139,0.16),transparent_24%)]" />
+            <motion.div
+              className="absolute -left-10 top-10 h-32 w-32 rounded-full bg-[rgba(139,243,216,0.22)] blur-3xl md:h-44 md:w-44"
+              animate={{ x: [0, 16, -10, 0], y: [0, -10, 12, 0] }}
+              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute right-0 top-8 h-36 w-36 rounded-full bg-[rgba(72,225,255,0.18)] blur-3xl md:h-52 md:w-52"
+              animate={{ x: [0, -14, 8, 0], y: [0, 12, -8, 0] }}
+              transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute bottom-4 right-10 h-32 w-32 rounded-full bg-[rgba(255,187,139,0.18)] blur-3xl md:h-44 md:w-44"
+              animate={{ x: [0, 10, -12, 0], y: [0, -8, 10, 0] }}
+              transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+            />
+
+            <div className="relative flex flex-col gap-5">
+              <div className="glass-card flex items-center justify-between gap-4 p-5">
+                <div>
+                  <div className="section-label !px-3 !py-1.5 !text-[10px]">Live workflow map</div>
+                  <div className="mt-3 font-display text-2xl font-semibold tracking-[-0.04em] md:text-[2rem]">
+                    Generate leads into campaigns, then preview before sending.
+                  </div>
+                </div>
+                <Sparkles className="hidden h-9 w-9 text-[var(--accent)] md:block" />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-[1.15fr_0.85fr]">
+                <motion.div
+                  className="glass-card relative overflow-hidden p-5 md:p-6"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.28, duration: 0.7 }}
+                >
+                  <div className="absolute inset-x-6 top-[78px] hidden h-px ambient-line md:block" />
+                  <div className="space-y-4">
+                    {HERO_PIPELINE.map((item, index) => (
+                      <motion.div
+                        key={item.label}
+                        className="relative grid gap-3 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 md:grid-cols-[72px_1fr]"
+                        initial={{ opacity: 0, x: 18 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.35 + index * 0.08, duration: 0.6 }}
+                      >
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(139,243,216,0.95),rgba(72,225,255,0.95))] font-display text-lg font-semibold text-slate-950">
+                          0{index + 1}
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.26em] text-white/45">{item.label}</div>
+                          <div className="mt-2 text-sm leading-6 text-white/78 md:text-base">{item.value}</div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+
+                <div className="grid gap-4">
+                  <motion.div
+                    className="glass-card p-5"
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.42, duration: 0.65 }}
+                  >
+                    <div className="text-xs uppercase tracking-[0.28em] text-white/45">Signal snapshot</div>
+                    <div className="mt-4 grid gap-3">
+                      {HERO_SIGNALS.map((signal, index) => (
+                        <motion.div
+                          key={signal.label}
+                          className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                          initial={{ opacity: 0, y: 14 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 + index * 0.07, duration: 0.5 }}
+                        >
+                          <span className="text-sm text-white/65">{signal.label}</span>
+                          <span className="font-display text-2xl font-semibold tracking-[-0.04em]">{signal.value}</span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    className="glass-card p-5"
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.58, duration: 0.6 }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.28em] text-white/45">Quality gate</div>
+                        <div className="mt-2 font-display text-xl font-semibold tracking-[-0.04em]">
+                          Preview every email before launch
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                        Safe send
+                      </div>
+                    </div>
+                    <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-[rgba(4,8,20,0.64)] p-4">
+                      <div className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-white/40">
+                        <span>Draft preview</span>
+                        <span>Lead-fit checked</span>
+                      </div>
+                      <div className="mt-4 space-y-3">
+                        <div className="h-2.5 w-4/5 rounded-full bg-white/10" />
+                        <div className="h-2.5 w-full rounded-full bg-white/10" />
+                        <div className="h-2.5 w-3/4 rounded-full bg-white/10" />
+                      </div>
+                    </div>
+                  </motion.div>
                 </div>
               </div>
-              <Sparkles className="hidden h-9 w-9 text-[var(--accent)] md:block" />
             </div>
-            <div className="mt-5 grid gap-3 text-sm text-white/65 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">Lead source presets</div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">Campaign assignment</div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">Email preview drawer</div>
-            </div>
-          </motion.div>
+          </div>
         </Reveal>
       </section>
 
