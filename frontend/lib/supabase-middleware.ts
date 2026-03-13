@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PROTECTED_ROUTES = ["/dashboard", "/leads", "/campaigns", "/analytics", "/settings"];
 const AUTH_ROUTES = ["/login", "/signup"];
+const STORAGE_KEY = "rf_session";
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,6 +32,9 @@ export async function updateSession(request: NextRequest) {
   });
 
   const supabase = createServerClient(url, publishableKey, {
+    cookieOptions: {
+      name: STORAGE_KEY,
+    },
     cookies: {
       getAll() {
         return request.cookies.getAll();

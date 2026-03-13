@@ -1,6 +1,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 
 let browserClient: ReturnType<typeof createBrowserClient> | null = null;
+const STORAGE_KEY = "rf_session";
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -19,8 +20,11 @@ export function createClient() {
   if (!browserClient) {
     const { url, publishableKey } = getSupabaseConfig();
     browserClient = createBrowserClient(url, publishableKey, {
+      cookieOptions: {
+        name: STORAGE_KEY,
+      },
       auth: {
-        storageKey: "rf_session",
+        storageKey: STORAGE_KEY,
         autoRefreshToken: true,
         detectSessionInUrl: true,
         persistSession: true,
