@@ -7,12 +7,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from config import ALLOW_DOCS, API_URL, FRONTEND_PREVIEW_REGEX, FRONTEND_URL, IS_PRODUCTION
+from config import ALLOW_DOCS, FRONTEND_PREVIEW_REGEX, FRONTEND_URL, IS_PRODUCTION
 from database import Base, engine
 from routers import analytics, auth, campaigns, emails, leads, payments
-from security import build_allowed_hosts, build_allowed_origins, build_preview_origin_regex
+from security import build_allowed_origins, build_preview_origin_regex
 
 Base.metadata.create_all(bind=engine)
 
@@ -30,7 +29,6 @@ allowed_origins = build_allowed_origins(FRONTEND_URL)
 preview_regex = build_preview_origin_regex(FRONTEND_URL, FRONTEND_PREVIEW_REGEX)
 
 app.add_middleware(GZipMiddleware, minimum_size=512)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=build_allowed_hosts(API_URL))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
