@@ -1,7 +1,11 @@
 """
-tasks.py - Celery background workers.
-Run:  celery -A tasks worker --loglevel=info
-Beat: celery -A tasks beat   --loglevel=info
+tasks.py - Background task execution.
+
+Free mode:
+- with ENABLE_BACKGROUND_WORKER=false, jobs run inside the web service via FastAPI BackgroundTasks
+
+Scaled mode:
+- with ENABLE_BACKGROUND_WORKER=true, jobs are queued to Celery/Redis and processed by a worker
 """
 import email as email_lib
 import imaplib
@@ -17,12 +21,14 @@ from celery import Celery
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from config import REDIS_URL  # noqa: E402
+from config import ENABLE_BACKGROUND_WORKER, REDIS_URL  # noqa: E402
 from database import Campaign, CampaignStatus, EmailLog, Lead, LeadStatus, SessionLocal, User  # noqa: E402
 from security import secret_manager  # noqa: E402
 from services.campaign_service import sync_campaign_stats  # noqa: E402
 
-celery = Celery("reachflow", broker=REDIS_URL, backend=REDIS_URL)
+broker_url = REDIS_URL or "memory://"
+result_backend = REDIS_URL or "cache+memory://"
+celery = Celery("reachflow", broker=broker_url, backend=result_backend)
 celery.conf.timezone = "Asia/Kolkata"
 celery.conf.beat_schedule = {
     "daily-followup": {"task": "followup", "schedule": 86400},
@@ -30,11 +36,18 @@ celery.conf.beat_schedule = {
 
 
 def run_lead_gen_task(user_id: str, params: dict):
-    celery_lead_gen.delay(user_id, params)
+    if ENABLE_BACKGROUND_WORKER:
+        celery_lead_gen.delay(user_id, params)
+        return
+    _lead_gen_impl(user_id, params)
 
 
 @celery.task(name="lead_gen")
 def celery_lead_gen(user_id: str, params: dict):
+    _lead_gen_impl(user_id, params)
+
+
+def _lead_gen_impl(user_id: str, params: dict):
     from services.lead_gen_service import run_lead_gen
     from database import LeadSource
 
@@ -89,11 +102,18 @@ def celery_lead_gen(user_id: str, params: dict):
 
 
 def run_campaign_batch(user_id: str, campaign_id: int):
-    celery_send_batch.delay(user_id, campaign_id)
+    if ENABLE_BACKGROUND_WORKER:
+        celery_send_batch.delay(user_id, campaign_id)
+        return
+    _send_batch_impl(user_id, campaign_id)
 
 
 @celery.task(name="send_batch")
 def celery_send_batch(user_id: str, campaign_id: int):
+    _send_batch_impl(user_id, campaign_id)
+
+
+def _send_batch_impl(user_id: str, campaign_id: int):
     from services.ai_service import generate_email_for_lead
 
     db = SessionLocal()
@@ -151,11 +171,18 @@ def celery_send_batch(user_id: str, campaign_id: int):
 
 
 def run_followup_check(user_id: str):
-    celery_followup.delay(user_id)
+    if ENABLE_BACKGROUND_WORKER:
+        celery_followup.delay(user_id)
+        return
+    _followup_impl(user_id)
 
 
 @celery.task(name="followup")
 def celery_followup(user_id: str):
+    _followup_impl(user_id)
+
+
+def _followup_impl(user_id: str):
     from services.ai_service import generate_followup_for_lead
 
     db = SessionLocal()

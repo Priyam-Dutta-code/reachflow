@@ -18,12 +18,13 @@ def _get_bool(name: str, default: bool = False) -> bool:
 APP_ENV: str = _get_env("APP_ENV", "development").lower()
 IS_PRODUCTION: bool = APP_ENV == "production"
 ALLOW_DOCS: bool = _get_bool("ALLOW_DOCS", not IS_PRODUCTION)
+ENABLE_BACKGROUND_WORKER: bool = _get_bool("ENABLE_BACKGROUND_WORKER", False)
 
 DATABASE_URL: str = _get_env(
     "DATABASE_URL",
     "postgresql://postgres:password@localhost:5432/reachflow",
 )
-REDIS_URL: str = _get_env("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL: str = _get_env("REDIS_URL", "")
 
 SUPABASE_URL: str = _get_env("SUPABASE_URL")
 SUPABASE_ANON_KEY: str = _get_env("SUPABASE_ANON_KEY")

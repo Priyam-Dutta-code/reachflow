@@ -4,9 +4,19 @@ This project is set up for:
 
 - Frontend on Vercel
 - Backend API on Render
-- Celery worker on Render
 - Database/Auth on Supabase
-- Redis via Render Key Value
+
+Free-mode deployment:
+
+- no Render worker required
+- no Redis required
+- background jobs run inside the web service
+
+Later upgrade path:
+
+- set `ENABLE_BACKGROUND_WORKER=true`
+- add Render Key Value / Redis
+- add a dedicated Render worker
 
 ## 1. Frontend on Vercel
 
@@ -32,18 +42,19 @@ Required environment variables:
 
 ```env
 APP_ENV=production
+ENABLE_BACKGROUND_WORKER=false
 APP_ENCRYPTION_KEY=
 DATABASE_URL=
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
-REDIS_URL=
 FRONTEND_URL=
 API_URL=
 ```
 
-Optional for full product behavior:
+Optional in free mode:
 
 ```env
+REDIS_URL=
 GROQ_API_KEY=
 SENDER_EMAIL=
 GMAIL_PASSWORD=
@@ -54,17 +65,19 @@ CASHFREE_SECRET_KEY=
 CASHFREE_ENV=PROD
 ```
 
-## 3. Render Worker
+## 3. How Free Mode Works
 
-The worker is required. Without it, lead generation and campaign jobs will queue but not run.
+When `ENABLE_BACKGROUND_WORKER=false`:
 
-Use the worker service from [`render.yaml`](./render.yaml):
+- lead generation jobs run in-process
+- campaign send jobs run in-process
+- reply-check jobs run in-process when triggered manually
 
-```text
-celery -A tasks worker --loglevel=info --concurrency=2
-```
+Tradeoff:
 
-It must use the same environment variables as the backend API.
+- jobs are less reliable than a dedicated worker
+- long-running jobs should be kept small for now
+- fully automatic scheduled follow-ups should be considered a later upgrade
 
 ## 4. Supabase
 
@@ -76,21 +89,24 @@ Collect:
 
 Use the project URL in both frontend and backend envs.
 
-## 5. Render Key Value
+## 5. Later Upgrade Path
 
-Create a Render Key Value instance in the same region as the backend.
+When clients start paying:
 
-Copy the internal connection string into:
+1. Add Render Key Value
+2. Set `REDIS_URL`
+3. Set `ENABLE_BACKGROUND_WORKER=true` on the backend
+4. Add a Render worker with:
 
-```env
-REDIS_URL=
+```text
+Root Directory: backend
+Build Command: pip install -r requirements.txt
+Start Command: celery -A tasks worker --loglevel=info --concurrency=2
 ```
-
-Recommended eviction policy: `noeviction`
 
 ## 6. Optional Client-Owned Credentials
 
-These can be added later by the client and do not block the base deploy:
+These can be added later and do not block the base deploy:
 
 - `GROQ_API_KEY`
 - `SENDER_EMAIL`
@@ -100,12 +116,12 @@ These can be added later by the client and do not block the base deploy:
 
 ## 7. Post-Deploy Checks
 
-- Backend health URL returns `200`
-- Frontend loads on desktop and mobile
-- Sign up and login work
-- Dashboard, leads, campaigns, analytics, and settings pages load
-- Worker is online in Render
-- Lead generation tasks move through Redis/worker when optional source credentials are present
+- backend `/health` returns `200`
+- frontend loads on desktop and mobile
+- sign up and login work
+- dashboard, leads, campaigns, analytics, and settings pages load
+- lead generation endpoint responds
+- campaign send endpoint responds
 
 ## 8. Important Safety Note
 

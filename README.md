@@ -38,8 +38,9 @@ npm run dev
 
 ## Production Notes
 
-- Render needs both a `web` service and a `worker` service
-- Render Key Value is required for Redis-backed background jobs
+- Free mode works with only a Render `web` service
+- Background jobs can run in-process with `ENABLE_BACKGROUND_WORKER=false`
+- Redis and a dedicated worker are optional upgrades for later
 - Vercel needs the frontend env vars from `frontend/.env.local`
 - Payments stay disabled until Cashfree credentials are added
 - Live sending stays disabled until the client adds Gmail app-password credentials
