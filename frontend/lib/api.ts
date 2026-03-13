@@ -1,6 +1,6 @@
 import { createClient } from "./supabase";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE = "/api/proxy";
 
 export async function apiFetch(path: string, init: RequestInit = {}) {
   const supabase = createClient();
@@ -19,7 +19,6 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
 
   const response = await fetch(`${BASE}${path}`, {
     ...init,
-    credentials: "include",
     cache: "no-store",
     headers,
   });
