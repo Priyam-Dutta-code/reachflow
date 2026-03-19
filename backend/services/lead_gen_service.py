@@ -328,6 +328,8 @@ def _career_intelligence(
             )
             batches.append(_append_note(leads, note))
             resources.append(PORTAL_LABELS.get(portal, portal))
+            if len(_merge_lead_batches(batches, max_results)) >= max_results:
+                break
 
     web_query = (
         _combine_text(role_query, "hiring companies", location, industry)
@@ -407,8 +409,10 @@ def _market_intelligence(
             batches.append(_append_note(leads, note))
             if "Open Web" not in resources:
                 resources.append("Open Web")
+            if len(_merge_lead_batches(batches, max_results)) >= max_results:
+                break
 
-    if GOOGLE_MAPS_API_KEY and location:
+    if GOOGLE_MAPS_API_KEY and location and len(_merge_lead_batches(batches, max_results)) < max_results:
         maps_query = _combine_text(industry or query, audience or market_query)
         maps_leads = _email_ready_leads(scrape_google_maps(maps_query, location, max(max_results // 2, 10)), max(max_results // 2, 10))
         if maps_leads:
@@ -477,6 +481,8 @@ def _partnership_intelligence(
                     "Strategic-partner lead identified from public company and channel signals.",
                 )
             )
+            if len(_merge_lead_batches(batches, max_results)) >= max_results:
+                break
 
     leads = _merge_lead_batches(batches, max_results)
     if not leads:
