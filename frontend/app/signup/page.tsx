@@ -93,7 +93,7 @@ export default function SignupPage() {
           <div>
             <div className="section-label">Start strong</div>
             <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em]">
-              Create your workspace and launch outbound with confidence.
+              Create your workspace and start with a cleaner outbound foundation.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-8 text-white/65">
               Your profile shapes how ReachFlow writes, personalizes, and signs every outbound message. You can refine
@@ -120,11 +120,11 @@ export default function SignupPage() {
             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-display text-lg font-bold text-slate-950">
               R
             </div>
-            <div>
-              <div className="font-display text-lg font-semibold">ReachFlow</div>
-              <div className="text-xs uppercase tracking-[0.28em] text-white/45">AI outreach SaaS</div>
-            </div>
-          </Link>
+              <div>
+                <div className="font-display text-lg font-semibold">ReachFlow</div>
+                <div className="text-xs uppercase tracking-[0.28em] text-white/45">Lead discovery and cold email</div>
+              </div>
+            </Link>
 
           <div className="mt-8 flex items-center gap-3">
             {(["account", "profile"] as Step[]).map((current, index) => (
@@ -149,8 +149,8 @@ export default function SignupPage() {
             </h2>
             <p className="mt-3 text-sm leading-7 text-white/65">
               {step === "account"
-                ? "Start with the essentials. You can add sending credentials and AI context in the next step."
-                : "These details help every email sound sharper, more credible, and more on-brand."}
+                ? "Start with the essentials. You can add sending credentials and message context in the next step."
+                : "These details help every email sound sharper, more credible, and more consistent with your positioning."}
             </p>
           </div>
 

@@ -22,6 +22,7 @@ class LeadGenSource(str, Enum):
     linkedin = "linkedin"
     apollo = "apollo"
     job_portal = "job_portal"
+    web_search = "web_search"
 
 
 class LeadGenMethod(str, Enum):
@@ -55,6 +56,7 @@ SOURCE_LABELS = {
     "naukri": "Naukri",
     "indeed": "Indeed",
     "linkedin_jobs": "LinkedIn Jobs",
+    "web_search": "Web Search",
 }
 
 

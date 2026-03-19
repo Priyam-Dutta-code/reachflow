@@ -45,11 +45,11 @@ export default function AnalyticsPage() {
           <div>
             <div className="section-label">Analytics</div>
             <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-              Measure the pipeline with clarity.
+              Read what is working across the pipeline.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-              Track lead volume, sourcing quality, send performance, and reply movement so your team can improve with
-              confidence.
+              Track lead volume, sourcing quality, send performance, and reply movement so every next campaign is
+              shaped by evidence instead of guesswork.
             </p>
           </div>
         </Reveal>

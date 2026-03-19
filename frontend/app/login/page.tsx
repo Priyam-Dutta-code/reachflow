@@ -40,10 +40,10 @@ function LoginForm() {
           <div>
             <div className="section-label">Welcome back</div>
             <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em]">
-              Step into your outbound command center.
+              Pick up your pipeline where you left it.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-8 text-white/65">
-              Manage sourcing, campaign execution, and follow-up from one premium workspace built for modern outreach.
+              Manage lead discovery, campaigns, and follow-up from one polished workspace built for real outreach.
             </p>
           </div>
           <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
@@ -62,7 +62,7 @@ function LoginForm() {
               </div>
               <div>
                 <div className="font-display text-lg font-semibold">ReachFlow</div>
-                <div className="text-xs uppercase tracking-[0.28em] text-white/45">AI outreach SaaS</div>
+                <div className="text-xs uppercase tracking-[0.28em] text-white/45">Lead discovery and cold email</div>
               </div>
             </Link>
             <h2 className="mt-8 font-display text-4xl font-semibold tracking-[-0.05em]">Log in</h2>

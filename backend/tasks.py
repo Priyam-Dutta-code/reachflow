@@ -76,6 +76,12 @@ def _lead_gen_impl(user_id: str, params: dict):
         if email_address:
             existing_emails.add(email_address)
 
+        source_value = lead_data.get("source", LeadSource.manual)
+        try:
+            lead_source = LeadSource(source_value) if isinstance(source_value, str) else source_value
+        except Exception:
+            lead_source = LeadSource.manual
+
         db.add(
             Lead(
                 user_id=user_id,
@@ -89,7 +95,8 @@ def _lead_gen_impl(user_id: str, params: dict):
                 industry=lead_data.get("industry", ""),
                 company_size=lead_data.get("company_size", ""),
                 location=lead_data.get("location", ""),
-                source=lead_data.get("source", LeadSource.manual),
+                source=lead_source,
+                notes=lead_data.get("notes", ""),
                 campaign_id=params.get("campaign_id"),
             )
         )

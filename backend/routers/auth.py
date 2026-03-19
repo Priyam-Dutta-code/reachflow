@@ -2,6 +2,7 @@
 routers/auth.py - Supabase JWT verification + user profile management.
 """
 from typing import Optional
+from urllib.parse import urlparse
 
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -10,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from config import SUPABASE_JWT_SECRET, SUPABASE_URL
+from config import DATABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, SUPABASE_URL
 from database import PlanType, User, get_db
 from security import enforce_rate_limit, secret_manager
 
@@ -23,20 +24,92 @@ PLAN_DEFAULTS = {
     PlanType.lifetime: {"leads_quota": 999999, "credits": 999999},
 }
 
-_jwks_client: Optional[PyJWKClient] = None
+_jwks_clients: dict[str, PyJWKClient] = {}
 
 
-def _get_jwks_client() -> Optional[PyJWKClient]:
-    global _jwks_client
-    if _jwks_client is None and SUPABASE_URL:
+def _project_ref_from_supabase_url(url: str) -> str:
+    host = urlparse((url or "").strip()).hostname or ""
+    if host.endswith(".supabase.co"):
+        return host.split(".")[0]
+    return ""
+
+
+def _project_ref_from_database_url(url: str) -> str:
+    username = (urlparse((url or "").strip()).username or "").strip()
+    if "." not in username:
+        return ""
+    return username.split(".")[-1]
+
+
+def _project_ref_from_anon_key(key: str) -> str:
+    candidate = (key or "").strip()
+    if candidate.count(".") != 2:
+        return ""
+
+    try:
+        payload = jwt.decode(candidate, options={"verify_signature": False, "verify_aud": False})
+        return str(payload.get("ref") or "").strip()
+    except Exception:
+        return ""
+
+
+def _expected_supabase_project_ref() -> str:
+    return (
+        _project_ref_from_supabase_url(SUPABASE_URL)
+        or _project_ref_from_database_url(DATABASE_URL)
+        or _project_ref_from_anon_key(SUPABASE_ANON_KEY)
+    )
+
+
+def _build_jwks_url(issuer: str) -> str:
+    normalized = (issuer or "").strip().rstrip("/")
+    if not normalized:
+        return ""
+    if normalized.endswith("/auth/v1"):
+        return f"{normalized}/.well-known/jwks.json"
+    return f"{normalized}/auth/v1/.well-known/jwks.json"
+
+
+def _get_jwks_client(issuer: str | None = None) -> Optional[PyJWKClient]:
+    expected_ref = _expected_supabase_project_ref()
+    candidate = (issuer or SUPABASE_URL).strip().rstrip("/")
+    if not candidate and expected_ref:
+        candidate = f"https://{expected_ref}.supabase.co/auth/v1"
+    if not candidate:
+        return None
+
+    parsed = urlparse(candidate)
+    host = parsed.hostname or ""
+    if expected_ref:
+        allowed_host = f"{expected_ref}.supabase.co"
+        if host != allowed_host:
+            print(f"[auth] Rejected issuer host '{host}' (expected '{allowed_host}')")
+            return None
+    elif not host.endswith(".supabase.co"):
+        print(f"[auth] Rejected non-Supabase issuer host '{host}'")
+        return None
+
+    jwks_url = _build_jwks_url(candidate)
+    if not jwks_url:
+        return None
+
+    client = _jwks_clients.get(jwks_url)
+    if client is None:
         try:
-            _jwks_client = PyJWKClient(
-                f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json",
-                cache_keys=True,
-            )
+            client = PyJWKClient(jwks_url, cache_keys=True)
+            _jwks_clients[jwks_url] = client
         except Exception as exc:
-            print(f"[auth] JWKS client init failed: {exc}")
-    return _jwks_client
+            print(f"[auth] JWKS client init failed for {jwks_url}: {exc}")
+            return None
+    return client
+
+
+def _decode_unverified_payload(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False, "verify_aud": False})
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
 
 
 def verify_token(authorization: str | None = Header(default=None)) -> dict:
@@ -45,9 +118,12 @@ def verify_token(authorization: str | None = Header(default=None)) -> dict:
 
     try:
         token = authorization.removeprefix("Bearer ").strip()
+        unverified_payload = _decode_unverified_payload(token)
+        verification_configured = False
 
-        jwks = _get_jwks_client()
+        jwks = _get_jwks_client(str(unverified_payload.get("iss") or ""))
         if jwks:
+            verification_configured = True
             try:
                 key = jwks.get_signing_key_from_jwt(token)
                 return jwt.decode(
@@ -60,6 +136,7 @@ def verify_token(authorization: str | None = Header(default=None)) -> dict:
                 print(f"[auth] JWKS verify failed ({exc}), trying legacy secret")
 
         if SUPABASE_JWT_SECRET:
+            verification_configured = True
             return jwt.decode(
                 token,
                 SUPABASE_JWT_SECRET,
@@ -67,7 +144,9 @@ def verify_token(authorization: str | None = Header(default=None)) -> dict:
                 options={"verify_aud": False},
             )
 
-        raise HTTPException(401, "No JWT verification method configured")
+        if not verification_configured:
+            raise HTTPException(503, "Authentication is temporarily unavailable. Please try again shortly.")
+        raise HTTPException(401, "Invalid token")
     except jwt.ExpiredSignatureError:
         raise HTTPException(401, "Session expired. Please log in again.")
     except HTTPException:

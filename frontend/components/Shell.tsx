@@ -95,7 +95,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <div>
                 <div className="font-display text-lg font-semibold">ReachFlow</div>
                 <div className="text-xs uppercase tracking-[0.28em] text-white/45">
-                  Command Center
+                  Outreach Workspace
                 </div>
               </div>
             </Link>
@@ -109,12 +109,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="mb-6 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div className="section-label !px-3 !py-1.5 !text-[10px]">Workspace secured</div>
+            <div className="section-label !px-3 !py-1.5 !text-[10px]">Built for real outreach</div>
             <div className="mt-4 text-2xl font-display font-semibold tracking-[-0.04em]">
-              Keep your pipeline moving every day.
+              Run prospecting, hiring outreach, and campaigns from one focused workspace.
             </div>
             <p className="mt-3 text-sm leading-6 text-white/65">
-              Source leads, organize campaigns, approve messaging, and track execution from one workspace.
+              Discover companies, recover contact emails, shape the message, and launch with more confidence.
             </p>
           </div>
 

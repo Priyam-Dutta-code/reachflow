@@ -53,6 +53,7 @@ class LeadSource(str, enum.Enum):
     naukri            = "naukri"
     indeed            = "indeed"
     linkedin_jobs     = "linkedin_jobs"
+    web_search        = "web_search"
     manual            = "manual"
 
 

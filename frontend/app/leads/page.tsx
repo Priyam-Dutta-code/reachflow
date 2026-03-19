@@ -9,6 +9,10 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const SOURCE_DETAILS = {
+  web_search: {
+    description: "Search the open web for companies, websites, and email-ready outreach targets.",
+    note: "Best option for broad prospecting and larger lead pools.",
+  },
   google_maps: {
     description: "Discover local companies and location-based prospects.",
     note: "Requires a Google Maps API key.",
@@ -165,11 +169,11 @@ export default function LeadsPage() {
             <div>
               <div className="section-label">Lead studio</div>
               <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Build high-intent prospect lists your team can use immediately.
+                Build email-ready lists your team can use right away.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-                Import fresh leads, route them into the right campaign, and preview the outreach before your team
-                launches the next batch.
+                Generate leads for job search, recruiting, client outreach, or outbound sales, then route them into
+                the right campaign before you send.
               </p>
             </div>
             <div className="glass-card flex items-center gap-4 px-5 py-4">
@@ -217,6 +221,7 @@ export default function LeadsPage() {
                   onChange={(event) => setForm({ ...form, source: event.target.value })}
                   value={form.source}
                 >
+                  <option value="web_search">Web Search</option>
                   <option value="job_portal">Job portals</option>
                   <option value="google_maps">Google Maps</option>
                   <option value="linkedin">LinkedIn</option>
@@ -298,9 +303,10 @@ export default function LeadsPage() {
               <div className="section-label !px-3 !py-1.5 !text-[10px]">Operator playbook</div>
               <div className="mt-5 space-y-4">
                 {[
-                  "Start with LinkedIn Jobs for the most dependable free lead imports.",
-                  "Attach leads to a campaign when you want sales-ready segments instead of a raw list.",
-                  "Preview the email copy from any row before you launch outreach to a new audience.",
+                  "Use LinkedIn Jobs when you want hiring-company signals and Web Search when you want broader prospecting volume.",
+                  "Every run now prioritizes leads with usable email addresses so campaigns stay send-ready.",
+                  "Public emails are used when available, and team inbox fallbacks are added when a company domain is found.",
+                  "Preview the generated copy from any row before you launch outreach to a new audience.",
                 ].map((item) => (
                   <div
                     key={item}
@@ -365,6 +371,7 @@ export default function LeadsPage() {
                         <td className="px-4 py-4">
                           <div className="font-medium text-white">{lead.name || "Unknown contact"}</div>
                           <div className="mt-1 text-xs text-white/45">{lead.email || "No email found yet"}</div>
+                          {lead.notes && <div className="mt-1 text-xs text-[var(--accent)]">{lead.notes}</div>}
                         </td>
                         <td className="px-4 py-4">
                           <div>{lead.company || "Unknown company"}</div>
@@ -408,7 +415,7 @@ export default function LeadsPage() {
 
               {!leads.length && (
                 <div className="px-6 py-16 text-center text-sm text-white/45">
-                  No leads imported yet. Start with LinkedIn Jobs, then assign the strongest prospects to a campaign.
+                  No leads imported yet. Start with Web Search for scale or LinkedIn Jobs for hiring-focused outreach.
                 </div>
               )}
             </div>
@@ -457,7 +464,7 @@ export default function LeadsPage() {
                   <div className="section-label !px-3 !py-1.5 !text-[10px]">Draft preview</div>
                   <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">{preview.subject}</h2>
                   <p className="mt-3 text-sm text-white/55">
-                    To: {preview.to || "No email"} {preview.company ? `• ${preview.company}` : ""}
+                    To: {preview.to || "No email"} {preview.company ? `- ${preview.company}` : ""}
                   </p>
                 </div>
                 <button className="secondary-button" onClick={() => setPreview(null)} type="button">

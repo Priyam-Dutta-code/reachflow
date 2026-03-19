@@ -110,11 +110,10 @@ export default function CampaignsPage() {
             <div>
               <div className="section-label">Campaign control</div>
               <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Launch polished outbound campaigns with clear sending control.
+                Create outbound campaigns that feel deliberate, not automated.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-                Organize lead segments, manage send volume, and keep every campaign accountable from first draft to
-                reply.
+                Organize audiences, control send pace, and keep every campaign aligned from first draft through reply.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -149,7 +148,7 @@ export default function CampaignsPage() {
               <textarea
                 className="textarea-field min-h-[130px] w-full md:col-span-2"
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
-                placeholder="Define the offer, audience, or angle for this campaign."
+                placeholder="Describe the audience, offer, or use case behind this campaign."
                 value={form.description}
               />
               <input
@@ -276,8 +275,8 @@ export default function CampaignsPage() {
               </div>
               <h2 className="mt-6 font-display text-3xl font-semibold tracking-[-0.04em]">No campaigns yet</h2>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/65">
-                Create your first campaign to define the message, audience, and sending pace before you activate
-                outbound.
+                Create your first campaign to define the audience, angle, and sending pace before you activate
+                outreach.
               </p>
               <button className="primary-button mt-6" onClick={() => setShowNew(true)} type="button">
                 <Plus className="h-4 w-4" />

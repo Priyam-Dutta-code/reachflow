@@ -90,11 +90,11 @@ export default function SettingsPage() {
           <div>
             <div className="section-label">Settings</div>
             <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-              Configure the identity behind every campaign.
+              Set the identity behind every message you send.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-              Keep your sender profile, personalization context, and optional credentials in one secure place. Gmail
-              and Groq values are never shown back in plain text after save.
+              Keep your sender profile, positioning, and optional credentials in one secure place. Gmail and Groq
+              values are never shown back in plain text after save.
             </p>
           </div>
         </Reveal>
@@ -223,8 +223,8 @@ export default function SettingsPage() {
                 </div>
                 <div className="mt-5 space-y-3 text-sm leading-7 text-white/68">
                   <p>Stored Gmail app passwords and Groq keys are encrypted on the backend before persistence.</p>
-                  <p>Webhook-based upgrades now require a verified Cashfree signature before plan changes are applied.</p>
-                  <p>Rate limits and stricter origin controls reduce abuse across lead generation, email preview, and checkout.</p>
+                  <p>Plan upgrades require a verified Cashfree signature before billing changes are applied.</p>
+                  <p>Rate limits and stricter origin controls help protect lead generation, email preview, and checkout.</p>
                 </div>
                 <div className="mt-5 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/45">
                   <ShieldCheck className="h-4 w-4" />

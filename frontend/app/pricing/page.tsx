@@ -117,11 +117,11 @@ export default function PricingPage() {
               Cashfree-verified checkout
             </div>
             <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em] md:text-6xl">
-              Choose the plan that matches your outbound ambition.
+              Choose the plan that fits your outreach motion.
             </h1>
             <p className="mt-5 text-base leading-8 text-white/65 md:text-lg">
-              Every paid tier keeps lead sourcing, personalized outreach, campaign control, and analytics inside one
-              polished workspace.
+              Every paid tier keeps lead sourcing, email-ready contacts, campaign control, and outreach analytics
+              inside one polished workspace.
             </p>
           </div>
         </Reveal>

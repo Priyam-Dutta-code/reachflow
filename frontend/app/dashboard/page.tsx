@@ -40,20 +40,39 @@ export default function DashboardPage() {
     {
       href: "/leads",
       icon: Target,
-      title: "Build lead lists",
-      description: "Import fresh prospects, qualify the best matches, and feed the next campaign.",
+      title: "Build the list",
+      description: "Pull email-ready contacts for job search, client outreach, recruiting, or outbound sales.",
     },
     {
       href: "/campaigns",
       icon: Sparkles,
-      title: "Launch campaigns",
-      description: "Turn qualified leads into outbound sequences with volume and follow-up control.",
+      title: "Shape the campaign",
+      description: "Turn approved leads into deliberate outbound plays with pacing and follow-up control.",
     },
     {
       href: "/analytics",
       icon: BarChart3,
-      title: "Track performance",
-      description: "Monitor sourcing quality, delivery volume, and reply momentum in one view.",
+      title: "Read the results",
+      description: "See which sources, campaigns, and segments are worth more of your attention.",
+    },
+  ];
+
+  const solutionTracks = [
+    {
+      title: "Students and job seekers",
+      description: "Target hiring companies, recruiter inboxes, and application outreach without living inside job portals.",
+    },
+    {
+      title: "Agencies and consultants",
+      description: "Build prospect lists for client acquisition, partnerships, and service-led outbound from one place.",
+    },
+    {
+      title: "Recruiters and staffing teams",
+      description: "Track companies that are actively hiring, then reach out with sharper positioning and cleaner follow-up.",
+    },
+    {
+      title: "Sales and growth teams",
+      description: "Source niche accounts from the open web, enrich contact routes, and keep campaigns moving.",
     },
   ];
 
@@ -89,11 +108,11 @@ export default function DashboardPage() {
             <div>
               <div className="section-label">Overview</div>
               <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Good to see you, {profile?.sender_name || user?.email?.split("@")[0] || "team"}.
+                Pipeline snapshot for {profile?.sender_name || user?.email?.split("@")[0] || "your team"}.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-                Run prospecting, campaign execution, and performance review from one clean operating layer built for
-                outbound teams.
+                Keep discovery, contact enrichment, campaign setup, and outbound review inside one cleaner operating
+                layer.
               </p>
             </div>
 
@@ -135,7 +154,7 @@ export default function DashboardPage() {
                 <div>
                   <div className="section-label !px-3 !py-1.5 !text-[10px]">Setup checklist</div>
                   <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">
-                    {setupItems.length ? "A few items still need attention." : "Your workspace is ready to run."}
+                    {setupItems.length ? "A few things still need attention." : "Your workspace is ready to run."}
                   </h2>
                 </div>
                 <Mail className="hidden h-8 w-8 text-[var(--accent)] md:block" />
@@ -185,6 +204,20 @@ export default function DashboardPage() {
             </div>
           </Reveal>
         </div>
+
+        <Reveal>
+          <div className="glass-card p-6">
+            <div className="section-label !px-3 !py-1.5 !text-[10px]">Use cases</div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+              {solutionTracks.map((item) => (
+                <div key={item.title} className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
+                  <div className="font-display text-xl font-semibold tracking-[-0.04em]">{item.title}</div>
+                  <p className="mt-3 text-sm leading-7 text-white/65">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
 
         {stats?.funnel?.length > 0 && (
           <Reveal>
