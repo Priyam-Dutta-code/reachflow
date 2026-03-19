@@ -69,6 +69,7 @@ SEARCH_BLOCKLIST = {
     "yellowpages.com",
     "yelp.com",
     "youtube.com",
+    "zhihu.com",
     "techbehemoths.com",
 }
 PORTAL_LABELS = {
@@ -393,8 +394,6 @@ def _market_intelligence(
     web_terms = [
         _combine_text(target_seed, location, market_descriptor),
         _combine_text(target_seed, location, "company"),
-        _combine_text(industry, location, "business"),
-        _combine_text(query, target_seed, location),
     ]
     for term in web_terms:
         if not term:
@@ -460,8 +459,6 @@ def _partnership_intelligence(
     for term in [
         _combine_text(partner_thesis, industry, location),
         _combine_text(partner_thesis, "partners", location),
-        _combine_text(partner_thesis, "integrations", location),
-        _combine_text(partner_thesis, "alliances", location),
     ]:
         if not term:
             continue
@@ -623,7 +620,16 @@ def _base_domain(url: str) -> str:
 
 def _blocked_host(url: str) -> bool:
     domain = _base_domain(url)
+    if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", domain):
+        return True
     return any(domain == blocked or domain.endswith(f".{blocked}") for blocked in SEARCH_BLOCKLIST)
+
+
+def _mostly_ascii(text: str) -> bool:
+    if not text:
+        return False
+    ascii_chars = sum(1 for char in text if ord(char) < 128)
+    return ascii_chars / max(len(text), 1) >= 0.7
 
 
 def _company_tokens(company: str) -> list[str]:
@@ -690,7 +696,7 @@ def _search_public_web(query: str, limit: int = 12) -> list[dict]:
                 if not href or href in seen_urls or _blocked_host(href):
                     continue
                 title = item.title.get_text(" ", strip=True)
-                if not title:
+                if not title or not _mostly_ascii(title):
                     continue
                 seen_urls.add(href)
                 results.append({"url": href, "title": title})
@@ -700,53 +706,6 @@ def _search_public_web(query: str, limit: int = 12) -> list[dict]:
                 return results
     except Exception:
         pass
-
-    engines = [
-        (
-            "https://html.duckduckgo.com/html/",
-            {"q": query},
-            "a.result__a[href^='http']",
-        ),
-        (
-            BRAVE_SEARCH_URL,
-            {"q": query, "source": "web"},
-            "div[data-type='web'] a[href^='http']",
-        ),
-        (
-            "https://search.yahoo.com/search",
-            {"p": query},
-            "div#web ol li a[href^='http']",
-        ),
-    ]
-
-    for url, params, selector in engines:
-        try:
-            response = requests.get(url, params=params, headers=HEADERS, timeout=6)
-            if response.status_code >= 400:
-                continue
-            soup = BeautifulSoup(response.text, "html.parser")
-        except Exception:
-            continue
-
-        results = []
-        seen_urls: set[str] = set()
-        for anchor in soup.select(selector):
-            href = _normalize_website(anchor.get("href", ""))
-            if not href or href in seen_urls or _blocked_host(href):
-                continue
-
-            title = " ".join(anchor.stripped_strings).strip()
-            if not title or title.lower() in {"videos", "view all"}:
-                continue
-
-            seen_urls.add(href)
-            results.append({"url": href, "title": title})
-            if len(results) >= limit:
-                break
-
-        if results:
-            return results
-
     return []
 
 
