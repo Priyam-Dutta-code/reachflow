@@ -412,7 +412,7 @@ def _market_intelligence(
             if len(_merge_lead_batches(batches, max_results)) >= max_results:
                 break
 
-    if GOOGLE_MAPS_API_KEY and location and len(_merge_lead_batches(batches, max_results)) < max_results:
+    if GOOGLE_MAPS_API_KEY and location and len(_merge_lead_batches(batches, max_results)) == 0:
         maps_query = _combine_text(industry or query, audience or market_query)
         maps_leads = _email_ready_leads(scrape_google_maps(maps_query, location, max(max_results // 2, 10)), max(max_results // 2, 10))
         if maps_leads:
