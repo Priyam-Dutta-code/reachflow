@@ -315,7 +315,9 @@ def _base_domain(url: str) -> str:
         return ""
 
     host = urlparse(_normalize_website(url)).netloc.lower()
-    host = host.split(":")[0].lstrip("www.")
+    host = host.split(":")[0]
+    if host.startswith("www."):
+        host = host[4:]
     if not host:
         return ""
 
