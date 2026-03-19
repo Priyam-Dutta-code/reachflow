@@ -130,7 +130,7 @@ export default function PricingPage() {
       <Script src="https://sdk.cashfree.com/js/v3/cashfree.js" strategy="afterInteractive" />
 
       <header className="sticky top-0 z-30 border-b border-white/5 bg-[rgba(4,8,20,0.72)] backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-5 py-4 md:px-8 lg:px-10">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 md:px-8 lg:px-10">
           <Link href="/" className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-display text-lg font-bold text-slate-950">
               R
@@ -140,7 +140,7 @@ export default function PricingPage() {
               <div className="text-xs uppercase tracking-[0.28em] text-white/45">Pricing</div>
             </div>
           </Link>
-          <Link href="/dashboard" className="secondary-button">
+          <Link href="/dashboard" className="secondary-button !px-5 !py-2.5">
             Return to app
           </Link>
         </div>
@@ -153,28 +153,30 @@ export default function PricingPage() {
               <ShieldCheck className="h-3.5 w-3.5" />
               Cashfree-verified checkout
             </div>
-            <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em] md:text-6xl">
+            <h1 className="mt-5 font-display text-4xl font-semibold tracking-[-0.05em] md:text-6xl">
               {vertical.pricingHeadline}
             </h1>
             <p className="mt-5 text-base leading-8 text-white/65 md:text-lg">{vertical.pricingSummary}</p>
           </div>
         </Reveal>
 
-        <div className="mt-10 flex flex-wrap justify-center gap-3">
-          {VERTICAL_LIST.map((item) => (
-            <button
-              key={item.id}
-              className={`rounded-full border px-4 py-2 text-sm transition ${
-                selectedVertical === item.id
-                  ? "border-[rgba(139,243,216,0.34)] bg-[rgba(139,243,216,0.14)] text-white"
-                  : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06]"
-              }`}
-              onClick={() => setSelectedVertical(item.id)}
-              type="button"
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="mt-10 overflow-x-auto pb-2">
+          <div className="mx-auto flex min-w-max gap-3 md:min-w-0 md:flex-wrap md:justify-center">
+            {VERTICAL_LIST.map((item) => (
+              <button
+                key={item.id}
+                className={`rounded-full border px-4 py-2 text-sm transition ${
+                  selectedVertical === item.id
+                    ? "border-[rgba(139,243,216,0.34)] bg-[rgba(139,243,216,0.14)] text-white"
+                    : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06]"
+                }`}
+                onClick={() => setSelectedVertical(item.id)}
+                type="button"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {message && (
@@ -183,7 +185,7 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+        <div className="mt-12 grid gap-5 xl:grid-cols-3">
           {plans.map((plan, index) => (
             <Reveal key={plan.id} delay={index * 0.05}>
               <div className={`glass-card h-full p-6 ${plan.popular ? "border-[rgba(139,243,216,0.3)]" : ""}`}>
@@ -254,7 +256,7 @@ export default function PricingPage() {
                 </p>
               </div>
               <button
-                className="primary-button"
+                className="primary-button w-full !justify-center sm:w-auto"
                 disabled={loading === creditPack.id}
                 onClick={() => startCheckout(creditPack.id, Number(creditPack.amount || 0))}
                 type="button"
