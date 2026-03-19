@@ -78,7 +78,7 @@ PORTAL_LABELS = {
 }
 CAREER_ALIASES = ["careers", "jobs", "hiring", "talent", "recruiting", "hr", "people"]
 BUSINESS_ALIASES = ["hello", "sales", "info", "partnerships", "growth", "contact"]
-PARTNERSHIP_ALIASES = ["partnerships", "alliances", "bd", "hello", "info"]
+PARTNERSHIP_ALIASES = ["partnerships", "alliances", "channel", "bd"]
 EMAIL_NEGATIVE_HINTS = {"abuse", "billing", "care", "legal", "noreply", "no-reply", "privacy", "security", "support"}
 MULTIPART_TLDS = {"co.in", "co.uk", "com.au", "com.br", "com.mx", "co.jp", "org.uk"}
 COMPANY_STOPWORDS = {
@@ -381,17 +381,20 @@ def _market_intelligence(
     goal: str,
     max_results: int,
 ) -> dict:
-    market_query = _combine_text(query, audience, offer or goal)
+    market_query = _combine_text(industry, audience, location) or _combine_text(query, audience, offer or goal)
     if not market_query:
         raise LeadGenerationError("Add the service, market, or buyer profile before generating leads.")
 
     resources: list[str] = []
     batches: list[list[dict]] = []
+    target_seed = industry or audience or query
+    market_descriptor = "brands" if vertical == "business_growth" else "companies"
 
     web_terms = [
-        _combine_text(market_query, industry, location),
-        _combine_text(industry or market_query, location, "company"),
-        _combine_text(market_query, location, "agency" if vertical == "agency" else "business"),
+        _combine_text(target_seed, location, market_descriptor),
+        _combine_text(target_seed, location, "company"),
+        _combine_text(industry, location, "business"),
+        _combine_text(query, target_seed, location),
     ]
     for term in web_terms:
         if not term:
@@ -671,7 +674,39 @@ def _search_public_web(query: str, limit: int = 12) -> list[dict]:
     if not query:
         return []
 
+    try:
+        response = requests.get(
+            "https://www.bing.com/search",
+            params={"q": query, "format": "rss"},
+            headers=HEADERS,
+            timeout=6,
+        )
+        if response.status_code < 400:
+            soup = BeautifulSoup(response.text, "xml")
+            results = []
+            seen_urls: set[str] = set()
+            for item in soup.select("item"):
+                href = _normalize_website(item.link.get_text(strip=True))
+                if not href or href in seen_urls or _blocked_host(href):
+                    continue
+                title = item.title.get_text(" ", strip=True)
+                if not title:
+                    continue
+                seen_urls.add(href)
+                results.append({"url": href, "title": title})
+                if len(results) >= limit:
+                    break
+            if results:
+                return results
+    except Exception:
+        pass
+
     engines = [
+        (
+            "https://html.duckduckgo.com/html/",
+            {"q": query},
+            "a.result__a[href^='http']",
+        ),
         (
             BRAVE_SEARCH_URL,
             {"q": query, "source": "web"},
@@ -686,7 +721,7 @@ def _search_public_web(query: str, limit: int = 12) -> list[dict]:
 
     for url, params, selector in engines:
         try:
-            response = requests.get(url, params=params, headers=HEADERS, timeout=10)
+            response = requests.get(url, params=params, headers=HEADERS, timeout=6)
             if response.status_code >= 400:
                 continue
             soup = BeautifulSoup(response.text, "html.parser")
@@ -789,21 +824,15 @@ def find_public_email(website: str, mode: str = "business") -> str:
         base,
         f"{base}/contact",
         f"{base}/contact-us",
-        f"{base}/contactus",
-        f"{base}/contact-us.html",
         f"{base}/about",
-        f"{base}/about-us",
         f"{base}/careers",
-        f"{base}/careers.html",
         f"{base}/jobs",
-        f"{base}/jobs.html",
-        f"{base}/team",
     ]
 
     emails: set[str] = set()
     for page in pages:
         try:
-            response = requests.get(page, headers=HEADERS, timeout=6)
+            response = requests.get(page, headers=HEADERS, timeout=3)
             for email in EMAIL_RE.findall(response.text):
                 email = email.lower()
                 email_domain = email.split("@", 1)[1]
@@ -812,6 +841,8 @@ def find_public_email(website: str, mode: str = "business") -> str:
                 if domain and not email_domain.endswith(domain):
                     continue
                 emails.add(email)
+            if emails:
+                break
         except Exception:
             continue
 
@@ -833,6 +864,11 @@ def _email_rank(email: str, domain: str, mode: str) -> int:
     for index, alias in enumerate(aliases):
         if alias in local:
             score += 30 - index
+
+    if mode == "business" and any(alias in local for alias in CAREER_ALIASES):
+        score -= 18
+    if mode == "career" and any(alias in local for alias in BUSINESS_ALIASES):
+        score -= 12
 
     if any(hint in local for hint in EMAIL_NEGATIVE_HINTS):
         score -= 25
