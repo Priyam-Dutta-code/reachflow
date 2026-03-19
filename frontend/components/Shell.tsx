@@ -16,7 +16,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { getVerticalConfig } from "@/lib/verticals";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -30,6 +32,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
   const { user, loading, signOut } = useAuth();
 
   useEffect(() => {
@@ -41,6 +44,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    apiFetch("/api/auth/me")
+      .then((me) => setProfile(me))
+      .catch(() => setProfile(null));
+  }, [user, pathname]);
 
   if (loading) {
     return (
@@ -64,6 +77,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   const activeItem = NAV.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   const currentSection = activeItem?.label ?? "Workspace";
+  const vertical = getVerticalConfig(profile?.vertical);
 
   return (
     <div className="app-shell">
@@ -109,12 +123,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="mb-6 rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div className="section-label !px-3 !py-1.5 !text-[10px]">Built for real outreach</div>
+            <div className="section-label !px-3 !py-1.5 !text-[10px]">{vertical.label}</div>
             <div className="mt-4 text-2xl font-display font-semibold tracking-[-0.04em]">
-              Run prospecting, hiring outreach, and campaigns from one focused workspace.
+              {vertical.dashboardTitle}
             </div>
             <p className="mt-3 text-sm leading-6 text-white/65">
-              Discover companies, recover contact emails, shape the message, and launch with more confidence.
+              {vertical.dashboardSummary}
             </p>
           </div>
 
@@ -151,7 +165,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <div className="truncate text-sm font-semibold text-white">{user.email}</div>
                 <div className="mt-1 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/45">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  authenticated
+                  {vertical.tag}
                 </div>
               </div>
             </div>
@@ -191,6 +205,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
             <div className="flex items-center gap-2">
               <div className="hidden max-w-[260px] items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/65 lg:flex">
+                <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-white/45">
+                  {vertical.tag}
+                </span>
                 <ShieldCheck className="h-4 w-4 text-[var(--accent)]" />
                 <span className="truncate">{user.email}</span>
               </div>

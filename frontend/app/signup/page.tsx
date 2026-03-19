@@ -3,10 +3,11 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
 import { createClient } from "@/lib/supabase";
+import { VERTICAL_LIST, getVerticalConfig, normalizeVertical, type VerticalId } from "@/lib/verticals";
 
 type Step = "account" | "profile";
 
@@ -15,6 +16,7 @@ export default function SignupPage() {
   const [step, setStep] = useState<Step>("account");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedVertical, setSelectedVertical] = useState<VerticalId>("business_growth");
 
   const [account, setAccount] = useState({ name: "", email: "", password: "" });
   const [profile, setProfile] = useState({
@@ -28,6 +30,15 @@ export default function SignupPage() {
     groq_api_key: "",
   });
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setSelectedVertical(normalizeVertical(params.get("vertical")));
+    }
+  }, []);
+
+  const vertical = getVerticalConfig(selectedVertical);
+
   const submitAccount = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -37,7 +48,7 @@ export default function SignupPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: account.email,
       password: account.password,
-      options: { data: { name: account.name } },
+      options: { data: { name: account.name, vertical: selectedVertical } },
     });
 
     if (signUpError) {
@@ -76,7 +87,7 @@ export default function SignupPage() {
     try {
       await apiFetch("/api/auth/onboard", {
         method: "POST",
-        body: JSON.stringify({ name: account.name, ...profile }),
+        body: JSON.stringify({ name: account.name, vertical: selectedVertical, ...profile }),
       });
       router.replace("/dashboard");
     } catch (submissionError: any) {
@@ -88,26 +99,20 @@ export default function SignupPage() {
 
   return (
     <div className="app-shell grid min-h-screen place-items-center px-4 py-10">
-      <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="grid w-full max-w-7xl gap-6 lg:grid-cols-[1fr_1.05fr]">
         <div className="glass-card hidden p-10 lg:flex lg:flex-col lg:justify-between">
           <div>
-            <div className="section-label">Start strong</div>
-            <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em]">
-              Create your workspace and start with a cleaner outbound foundation.
-            </h1>
-            <p className="mt-5 max-w-lg text-base leading-8 text-white/65">
-              Your profile shapes how ReachFlow writes, personalizes, and signs every outbound message. You can refine
-              it any time from Settings.
-            </p>
+            <div className="section-label">{vertical.tag} workflow</div>
+            <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.06em]">{vertical.landingHeadline}</h1>
+            <p className="mt-5 max-w-lg text-base leading-8 text-white/65">{vertical.landingSummary}</p>
           </div>
 
           <div className="space-y-3">
-            {[
-              "Free plan with lead generation and analytics",
-              "Optional Gmail app password for live sending",
-              "Optional Groq key for dedicated AI usage",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/72">
+            {vertical.landingBullets.map((item) => (
+              <div
+                key={item}
+                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/72"
+              >
                 <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
                 {item}
               </div>
@@ -115,16 +120,16 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <div className="shell-card mx-auto w-full max-w-2xl p-6 md:p-8">
+        <div className="shell-card mx-auto w-full max-w-3xl p-6 md:p-8">
           <Link href="/" className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-display text-lg font-bold text-slate-950">
               R
             </div>
-              <div>
-                <div className="font-display text-lg font-semibold">ReachFlow</div>
-                <div className="text-xs uppercase tracking-[0.28em] text-white/45">Lead discovery and cold email</div>
-              </div>
-            </Link>
+            <div>
+              <div className="font-display text-lg font-semibold">ReachFlow</div>
+              <div className="text-xs uppercase tracking-[0.28em] text-white/45">Vertical onboarding</div>
+            </div>
+          </Link>
 
           <div className="mt-8 flex items-center gap-3">
             {(["account", "profile"] as Step[]).map((current, index) => (
@@ -145,12 +150,12 @@ export default function SignupPage() {
 
           <div className="mt-8">
             <h2 className="font-display text-4xl font-semibold tracking-[-0.05em]">
-              {step === "account" ? "Create your account" : "Set your sender profile"}
+              {step === "account" ? "Create your account" : `Set up your ${vertical.label.toLowerCase()} profile`}
             </h2>
             <p className="mt-3 text-sm leading-7 text-white/65">
               {step === "account"
-                ? "Start with the essentials. You can add sending credentials and message context in the next step."
-                : "These details help every email sound sharper, more credible, and more consistent with your positioning."}
+                ? "Choose the buyer motion first. ReachFlow will use it to shape your dashboard, pricing, lead generation, and email copy."
+                : vertical.dashboardSummary}
             </p>
           </div>
 
@@ -161,7 +166,26 @@ export default function SignupPage() {
           )}
 
           {step === "account" ? (
-            <form className="mt-6 space-y-4" onSubmit={submitAccount}>
+            <form className="mt-6 space-y-5" onSubmit={submitAccount}>
+              <div className="grid gap-3 md:grid-cols-2">
+                {VERTICAL_LIST.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`rounded-[24px] border p-4 text-left transition ${
+                      selectedVertical === item.id
+                        ? "border-[rgba(139,243,216,0.34)] bg-[rgba(139,243,216,0.12)]"
+                        : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
+                    }`}
+                    onClick={() => setSelectedVertical(item.id)}
+                    type="button"
+                  >
+                    <div className="text-xs uppercase tracking-[0.24em] text-white/42">{item.tag}</div>
+                    <div className="mt-3 font-display text-2xl font-semibold tracking-[-0.04em]">{item.label}</div>
+                    <p className="mt-3 text-sm leading-7 text-white/64">{item.audience}</p>
+                  </button>
+                ))}
+              </div>
+
               <input
                 autoComplete="name"
                 className="field w-full"
@@ -191,12 +215,16 @@ export default function SignupPage() {
               />
 
               <button className="primary-button w-full !justify-center !py-3.5" disabled={loading} type="submit">
-                {loading ? "Creating account..." : "Continue"}
+                {loading ? "Creating account..." : `Continue with ${vertical.label}`}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </form>
           ) : (
             <form className="mt-6 space-y-4" onSubmit={submitProfile}>
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-7 text-white/68">
+                <span className="font-semibold text-white">Selected vertical:</span> {vertical.label}. You can change this later in Settings if you want a different workspace and pricing model.
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <input
                   className="field w-full"
@@ -215,7 +243,7 @@ export default function SignupPage() {
               <input
                 className="field w-full"
                 onChange={(event) => setProfile({ ...profile, sender_role: event.target.value })}
-                placeholder="Your role or positioning"
+                placeholder="Role, offer, or positioning"
                 value={profile.sender_role}
               />
               <input
@@ -227,7 +255,7 @@ export default function SignupPage() {
               <textarea
                 className="textarea-field min-h-[130px] w-full"
                 onChange={(event) => setProfile({ ...profile, sender_profile: event.target.value })}
-                placeholder="Describe your offer, background, or the kind of outreach you want AI to help write."
+                placeholder="Describe your offer, background, outcomes, or the voice you want ReachFlow to reflect in outbound copy."
                 value={profile.sender_profile}
               />
               <div className="grid gap-4 md:grid-cols-2">

@@ -13,11 +13,13 @@ from security import enforce_rate_limit
 from services.campaign_service import sync_campaign_stats
 from services.lead_gen_service import LeadGenerationError
 from tasks import run_lead_gen_task
+from verticals import get_vertical_config
 
 router = APIRouter()
 
 
 class LeadGenSource(str, Enum):
+    auto = "auto"
     google_maps = "google_maps"
     linkedin = "linkedin"
     apollo = "apollo"
@@ -39,10 +41,13 @@ class JobPortal(str, Enum):
 class LeadGenRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    source: LeadGenSource = LeadGenSource.google_maps
+    source: LeadGenSource = LeadGenSource.auto
     query: str = Field(min_length=2, max_length=120)
     location: str = Field(default="", max_length=120)
     industry: str = Field(default="", max_length=120)
+    audience: str = Field(default="", max_length=120)
+    offer: str = Field(default="", max_length=160)
+    goal: str = Field(default="", max_length=160)
     method: LeadGenMethod = LeadGenMethod.selenium
     portal: JobPortal = JobPortal.naukri
     max: int = Field(default=50, ge=1, le=200)
@@ -50,6 +55,7 @@ class LeadGenRequest(BaseModel):
 
 
 SOURCE_LABELS = {
+    "vertical_intelligence": "Vertical intelligence",
     "google_maps": "Google Maps",
     "linkedin_selenium": "LinkedIn browser search",
     "apollo": "Apollo",
@@ -96,6 +102,7 @@ def generate_leads(
 
     payload = body.model_dump()
     payload["max"] = min(body.max, remaining_quota)
+    payload["vertical"] = getattr(current_user, "vertical", "business_growth")
     if ENABLE_BACKGROUND_WORKER:
         background_tasks.add_task(run_lead_gen_task, current_user.id, payload)
         return {
@@ -109,9 +116,15 @@ def generate_leads(
     except LeadGenerationError as exc:
         raise HTTPException(400, str(exc)) from exc
 
-    source_used = SOURCE_LABELS.get(result.get("source_used"), "the selected source")
+    vertical_config = get_vertical_config(getattr(current_user, "vertical", None))
+    if result.get("source_used") == "vertical_intelligence":
+        source_used = vertical_config["generator_label"]
+    else:
+        source_used = SOURCE_LABELS.get(result.get("source_used"), "the selected source")
     added = result.get("added", 0)
     message = f"Imported {added} lead{'s' if added != 1 else ''} from {source_used}."
+    if result.get("resources_used"):
+        message += f" Sources used: {', '.join(result['resources_used'])}."
     if result.get("duplicates_skipped"):
         message += f" Skipped {result['duplicates_skipped']} duplicate{'s' if result['duplicates_skipped'] != 1 else ''}."
 

@@ -7,6 +7,7 @@ from database import Lead, User, get_db
 from routers.auth import get_current_user
 from security import enforce_rate_limit
 from tasks import run_followup_check
+from verticals import entitlements_for_user
 
 router = APIRouter()
 
@@ -45,5 +46,8 @@ def check_replies(
     current_user: User = Depends(get_current_user),
 ):
     enforce_rate_limit(request, "reply_check", limit=4, window_seconds=300, identifier=current_user.id)
+    entitlements = entitlements_for_user(current_user)
+    if not entitlements.get("reply_checks"):
+        raise HTTPException(402, "Reply checks are available on the paid plans for this vertical.")
     background_tasks.add_task(run_followup_check, current_user.id)
     return {"message": "Reply check started in the background"}

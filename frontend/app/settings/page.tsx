@@ -7,12 +7,14 @@ import { Reveal } from "@/components/Reveal";
 import Shell from "@/components/Shell";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { VERTICAL_LIST, getVerticalConfig, normalizeVertical } from "@/lib/verticals";
 
 export default function SettingsPage() {
   const { session } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [form, setForm] = useState({
     name: "",
+    vertical: "business_growth",
     sender_name: "",
     sender_email: "",
     sender_phone: "",
@@ -36,6 +38,7 @@ export default function SettingsPage() {
         setProfile(data);
         setForm({
           name: data.name || "",
+          vertical: normalizeVertical(data.vertical),
           sender_name: data.sender_name || "",
           sender_email: data.sender_email || data.email || "",
           sender_phone: data.sender_phone || "",
@@ -59,6 +62,7 @@ export default function SettingsPage() {
     try {
       const payload = {
         ...form,
+        vertical: normalizeVertical(form.vertical),
         ...(form.gmail_password ? { gmail_password: form.gmail_password } : {}),
         ...(form.groq_api_key ? { groq_api_key: form.groq_api_key } : {}),
       };
@@ -75,13 +79,15 @@ export default function SettingsPage() {
       });
       setProfile(data.user);
       setForm((current) => ({ ...current, gmail_password: "", groq_api_key: "" }));
-      setMessage("Settings updated successfully. Sensitive fields remain encrypted on the backend.");
+      setMessage("Settings updated. ReachFlow will now use this vertical and sender profile for new lead runs and draft generation.");
     } catch (requestError: any) {
       setError(requestError.message);
     } finally {
       setSaving(false);
     }
   };
+
+  const vertical = getVerticalConfig(form.vertical);
 
   return (
     <Shell>
@@ -90,11 +96,11 @@ export default function SettingsPage() {
           <div>
             <div className="section-label">Settings</div>
             <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-              Set the identity behind every message you send.
+              Configure the workspace behind every lead run and outbound send.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-              Keep your sender profile, positioning, and optional credentials in one secure place. Gmail and Groq
-              values are never shown back in plain text after save.
+              Switch verticals, tune your sender identity, and keep optional credentials in one secure place. Sensitive
+              values stay encrypted after save.
             </p>
           </div>
         </Reveal>
@@ -114,6 +120,28 @@ export default function SettingsPage() {
         <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
           <Reveal>
             <form className="glass-card grid gap-4 p-6 md:grid-cols-2" onSubmit={saveProfile}>
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-xs uppercase tracking-[0.22em] text-white/42">Workspace vertical</span>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {VERTICAL_LIST.map((item) => (
+                    <button
+                      key={item.id}
+                      className={`rounded-[24px] border p-4 text-left transition ${
+                        form.vertical === item.id
+                          ? "border-[rgba(139,243,216,0.34)] bg-[rgba(139,243,216,0.12)]"
+                          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
+                      }`}
+                      onClick={() => setForm({ ...form, vertical: item.id })}
+                      type="button"
+                    >
+                      <div className="text-xs uppercase tracking-[0.22em] text-white/42">{item.tag}</div>
+                      <div className="mt-3 font-display text-2xl font-semibold tracking-[-0.04em]">{item.label}</div>
+                      <p className="mt-3 text-sm leading-7 text-white/64">{item.audience}</p>
+                    </button>
+                  ))}
+                </div>
+              </label>
+
               <input
                 className="field w-full"
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
@@ -154,7 +182,7 @@ export default function SettingsPage() {
               <textarea
                 className="textarea-field min-h-[160px] w-full md:col-span-2"
                 onChange={(event) => setForm({ ...form, sender_profile: event.target.value })}
-                placeholder="Describe your work, offer, experience, or the tone you want AI to reflect."
+                placeholder="Describe your offer, experience, outcomes, or the tone you want ReachFlow to reflect."
                 value={form.sender_profile}
               />
               <input
@@ -180,6 +208,15 @@ export default function SettingsPage() {
 
           <Reveal delay={0.08}>
             <div className="space-y-4">
+              <div className="glass-card p-6">
+                <div className="section-label !px-3 !py-1.5 !text-[10px]">Current workspace</div>
+                <div className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">{vertical.label}</div>
+                <p className="mt-3 text-sm leading-7 text-white/66">{vertical.dashboardSummary}</p>
+                <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-white/66">
+                  Current plan: <span className="font-semibold text-white">{profile?.plan_name || "Starter"}</span>
+                </div>
+              </div>
+
               <div className="glass-card p-6">
                 <div className="section-label !px-3 !py-1.5 !text-[10px]">Connection status</div>
                 <div className="mt-5 space-y-3">
@@ -224,11 +261,11 @@ export default function SettingsPage() {
                 <div className="mt-5 space-y-3 text-sm leading-7 text-white/68">
                   <p>Stored Gmail app passwords and Groq keys are encrypted on the backend before persistence.</p>
                   <p>Plan upgrades require a verified Cashfree signature before billing changes are applied.</p>
-                  <p>Rate limits and stricter origin controls help protect lead generation, email preview, and checkout.</p>
+                  <p>Rate limits and origin protections cover lead generation, profile updates, email preview, and checkout flows.</p>
                 </div>
                 <div className="mt-5 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/45">
                   <ShieldCheck className="h-4 w-4" />
-                  Enterprise-minded foundation
+                  Production-minded foundation
                 </div>
               </div>
             </div>

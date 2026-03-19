@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { Reveal } from "@/components/Reveal";
 import { apiFetch } from "@/lib/api";
+import { DEFAULT_VERTICAL, VERTICAL_LIST, getVerticalConfig, normalizeVertical, type VerticalId } from "@/lib/verticals";
 
 declare global {
   interface Window {
@@ -17,21 +18,32 @@ declare global {
 
 export default function PricingPage() {
   const router = useRouter();
+  const [selectedVertical, setSelectedVertical] = useState<VerticalId>(DEFAULT_VERTICAL);
   const [plans, setPlans] = useState<any[]>([]);
   const [creditPack, setCreditPack] = useState<any>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
+  const vertical = getVerticalConfig(selectedVertical);
+
   useEffect(() => {
-    apiFetch("/api/payments/plans")
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setSelectedVertical(normalizeVertical(params.get("vertical")));
+    }
+  }, []);
+
+  useEffect(() => {
+    apiFetch(`/api/payments/plans?vertical=${selectedVertical}`)
       .then((data) => {
         setPlans(data.plans ?? []);
         setCreditPack(data.credits ?? null);
       })
       .catch(() => {
         setPlans([]);
+        setCreditPack(null);
       });
-  }, []);
+  }, [selectedVertical]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -43,26 +55,51 @@ export default function PricingPage() {
           method: "POST",
           body: JSON.stringify({ order_id: orderId, plan }),
         })
-          .then(() => setMessage(`Payment confirmed. ${plan} is now active.`))
+          .then(() => setMessage("Payment confirmed. Your workspace has been upgraded."))
           .catch(() => setMessage("Payment received. Refresh in a moment if your plan has not updated yet."));
       }
-      window.history.replaceState({}, "", "/pricing");
+      window.history.replaceState({}, "", `/pricing?vertical=${selectedVertical}`);
     }
-  }, []);
+  }, [selectedVertical]);
 
-  const startCheckout = async (planId: string) => {
+  const activateFreePlan = async () => {
     const supabase = (await import("@/lib/supabase")).createClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
     if (!session) {
-      router.push("/login?next=/pricing");
+      router.push(`/signup?vertical=${selectedVertical}`);
       return;
     }
 
-    if (planId === "free") {
+    setLoading("free");
+    try {
+      await apiFetch("/api/auth/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ vertical: selectedVertical }),
+      });
       router.push("/dashboard");
+    } catch (checkoutError: any) {
+      setMessage(checkoutError.message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const startCheckout = async (planId: string, amount: number) => {
+    const supabase = (await import("@/lib/supabase")).createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      router.push(`/signup?vertical=${selectedVertical}`);
+      return;
+    }
+
+    if (amount <= 0) {
+      await activateFreePlan();
       return;
     }
 
@@ -111,20 +148,34 @@ export default function PricingPage() {
 
       <section className="section-wrap">
         <Reveal>
-          <div className="mx-auto max-w-3xl text-center">
+          <div className="mx-auto max-w-4xl text-center">
             <div className="section-label justify-center">
               <ShieldCheck className="h-3.5 w-3.5" />
               Cashfree-verified checkout
             </div>
             <h1 className="mt-5 font-display text-5xl font-semibold tracking-[-0.05em] md:text-6xl">
-              Choose the plan that fits your outreach motion.
+              {vertical.pricingHeadline}
             </h1>
-            <p className="mt-5 text-base leading-8 text-white/65 md:text-lg">
-              Every paid tier keeps lead sourcing, email-ready contacts, campaign control, and outreach analytics
-              inside one polished workspace.
-            </p>
+            <p className="mt-5 text-base leading-8 text-white/65 md:text-lg">{vertical.pricingSummary}</p>
           </div>
         </Reveal>
+
+        <div className="mt-10 flex flex-wrap justify-center gap-3">
+          {VERTICAL_LIST.map((item) => (
+            <button
+              key={item.id}
+              className={`rounded-full border px-4 py-2 text-sm transition ${
+                selectedVertical === item.id
+                  ? "border-[rgba(139,243,216,0.34)] bg-[rgba(139,243,216,0.14)] text-white"
+                  : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06]"
+              }`}
+              onClick={() => setSelectedVertical(item.id)}
+              type="button"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
         {message && (
           <div className="mx-auto mt-8 max-w-3xl rounded-[24px] border border-white/10 bg-white/[0.04] px-5 py-4 text-center text-sm text-white/75">
@@ -132,7 +183,7 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="mt-12 grid gap-5 lg:grid-cols-4">
+        <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {plans.map((plan, index) => (
             <Reveal key={plan.id} delay={index * 0.05}>
               <div className={`glass-card h-full p-6 ${plan.popular ? "border-[rgba(139,243,216,0.3)]" : ""}`}>
@@ -151,6 +202,15 @@ export default function PricingPage() {
                   )}
                 </div>
 
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[20px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/68">
+                    {plan.leads_quota} leads / month
+                  </div>
+                  <div className="rounded-[20px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/68">
+                    {plan.credits} email credits
+                  </div>
+                </div>
+
                 <div className="mt-6 space-y-3">
                   {plan.features.map((feature: string) => (
                     <div key={feature} className="flex items-start gap-3 text-sm leading-7 text-white/72">
@@ -160,13 +220,22 @@ export default function PricingPage() {
                   ))}
                 </div>
 
+                <div className="mt-6 rounded-[22px] border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-white/66">
+                  Up to {plan.entitlements?.campaign_slots ?? 1} active campaigns, {plan.entitlements?.daily_send_cap ?? 25} sends per day
+                  {plan.entitlements?.follow_up_automation ? ", automated follow-ups included." : ", manual follow-up workflow."}
+                </div>
+
                 <button
                   className={`mt-8 w-full ${plan.popular ? "primary-button" : "secondary-button"} !justify-center !py-3.5`}
-                  disabled={loading === plan.id}
-                  onClick={() => startCheckout(plan.id)}
+                  disabled={loading === plan.id || loading === "free"}
+                  onClick={() => startCheckout(plan.id, Number(plan.amount || 0))}
                   type="button"
                 >
-                  {loading === plan.id ? "Opening..." : plan.amount ? `Choose ${plan.name}` : "Start free"}
+                  {loading === plan.id || (loading === "free" && Number(plan.amount || 0) <= 0)
+                    ? "Opening..."
+                    : Number(plan.amount || 0) > 0
+                      ? `Choose ${plan.name}`
+                      : "Activate starter"}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
@@ -181,13 +250,13 @@ export default function PricingPage() {
                 <div className="section-label !px-3 !py-1.5 !text-[10px]">Top-up</div>
                 <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em]">{creditPack.name}</h2>
                 <p className="mt-3 text-sm leading-7 text-white/65">
-                  Ideal for teams that want to keep campaigns active without changing plans.
+                  Keep campaigns moving without changing plans when your team needs more sending capacity.
                 </p>
               </div>
               <button
                 className="primary-button"
                 disabled={loading === creditPack.id}
-                onClick={() => startCheckout(creditPack.id)}
+                onClick={() => startCheckout(creditPack.id, Number(creditPack.amount || 0))}
                 type="button"
               >
                 {loading === creditPack.id ? "Opening..." : `Buy for Rs ${creditPack.amount}`}

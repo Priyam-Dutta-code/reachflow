@@ -14,15 +14,18 @@ from sqlalchemy.orm import Session
 from config import DATABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, SUPABASE_URL
 from database import PlanType, User, get_db
 from security import enforce_rate_limit, secret_manager
+from verticals import (
+    DEFAULT_VERTICAL,
+    default_plan_key,
+    entitlements_for_user,
+    get_plan,
+    get_vertical_config,
+    matching_plan_key,
+    normalize_vertical,
+    plan_for_user,
+)
 
 router = APIRouter()
-
-PLAN_DEFAULTS = {
-    PlanType.free: {"leads_quota": 100, "credits": 50},
-    PlanType.pro: {"leads_quota": 1000, "credits": 500},
-    PlanType.agency: {"leads_quota": 999999, "credits": 2000},
-    PlanType.lifetime: {"leads_quota": 999999, "credits": 999999},
-}
 
 _jwks_clients: dict[str, PyJWKClient] = {}
 
@@ -169,6 +172,37 @@ def _migrate_sensitive_fields(user: User, db: Session) -> None:
         db.refresh(user)
 
 
+def _ensure_product_profile(user: User, db: Session) -> None:
+    changed = False
+
+    normalized_vertical = normalize_vertical(getattr(user, "vertical", None) or DEFAULT_VERTICAL)
+    if getattr(user, "vertical", None) != normalized_vertical:
+        user.vertical = normalized_vertical
+        changed = True
+
+    expected_plan_key = (getattr(user, "plan_key", "") or "").strip() or matching_plan_key(normalized_vertical, user.plan)
+    if getattr(user, "plan_key", None) != expected_plan_key:
+        user.plan_key = expected_plan_key
+        changed = True
+
+    current_plan = plan_for_user(user)
+    if user.plan != current_plan["plan_type"]:
+        user.plan = current_plan["plan_type"]
+        changed = True
+
+    if user.plan == PlanType.free:
+        if (user.leads_quota or 0) != current_plan["leads_quota"]:
+            user.leads_quota = current_plan["leads_quota"]
+            changed = True
+        if (user.credits or 0) < current_plan["credits"]:
+            user.credits = current_plan["credits"]
+            changed = True
+
+    if changed:
+        db.commit()
+        db.refresh(user)
+
+
 def get_current_user(
     payload: dict = Depends(verify_token),
     db: Session = Depends(get_db),
@@ -185,16 +219,19 @@ def get_current_user(
             print(f"[auth] Reusing existing user row {user.id} for verified email {email} (token sub {user_id})")
 
     if not user:
-        defaults = PLAN_DEFAULTS[PlanType.free]
         metadata = payload.get("user_metadata") or {}
         preferred_name = metadata.get("name") or email.split("@")[0] or "User"
+        vertical = normalize_vertical(metadata.get("vertical") or DEFAULT_VERTICAL)
+        default_plan = get_plan(default_plan_key(vertical), vertical)
         user = User(
             id=user_id,
             email=email,
             name=preferred_name,
-            plan=PlanType.free,
-            credits=defaults["credits"],
-            leads_quota=defaults["leads_quota"],
+            vertical=vertical,
+            plan=default_plan["plan_type"],
+            plan_key=default_plan["id"],
+            credits=default_plan["credits"],
+            leads_quota=default_plan["leads_quota"],
             leads_used=0,
             emails_sent=0,
         )
@@ -212,6 +249,7 @@ def get_current_user(
             print(f"[auth] Recovered existing user row {user.id} after duplicate insert for {email}")
 
     _migrate_sensitive_fields(user, db)
+    _ensure_product_profile(user, db)
     return user
 
 
@@ -219,6 +257,7 @@ class _ProfileBase(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: Optional[str] = Field(default=None, min_length=2, max_length=80)
+    vertical: Optional[str] = Field(default=None, max_length=80)
     sender_name: Optional[str] = Field(default=None, min_length=2, max_length=80)
     sender_email: Optional[str] = Field(default=None, min_length=5, max_length=255)
     sender_phone: Optional[str] = Field(default=None, max_length=32)
@@ -242,9 +281,17 @@ class _ProfileBase(BaseModel):
             raise ValueError("Enter a valid LinkedIn URL")
         return value
 
+    @field_validator("vertical")
+    @classmethod
+    def validate_vertical(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        return normalize_vertical(value)
+
 
 class OnboardRequest(_ProfileBase):
     name: str = Field(min_length=2, max_length=80)
+    vertical: str = Field(default=DEFAULT_VERTICAL, max_length=80)
     sender_name: str = Field(min_length=2, max_length=80)
     sender_email: str = Field(min_length=5, max_length=255)
     sender_phone: str = Field(default="")
@@ -261,6 +308,18 @@ class ProfileUpdate(_ProfileBase):
 
 def _update_sensitive_fields(current_user: User, fields: dict) -> None:
     for field, value in fields.items():
+        if field == "vertical":
+            next_vertical = normalize_vertical(value)
+            mapped_plan = get_plan(matching_plan_key(next_vertical, current_user.plan), next_vertical)
+            current_user.vertical = next_vertical
+            current_user.plan = mapped_plan["plan_type"]
+            current_user.plan_key = mapped_plan["id"]
+            current_user.leads_quota = mapped_plan["leads_quota"]
+            if current_user.plan == PlanType.free:
+                current_user.credits = mapped_plan["credits"]
+            else:
+                current_user.credits = max(current_user.credits or 0, mapped_plan["credits"])
+            continue
         if field in {"gmail_password", "groq_api_key"}:
             setattr(current_user, field, secret_manager.encrypt(value))
         else:
@@ -268,6 +327,8 @@ def _update_sensitive_fields(current_user: User, fields: dict) -> None:
 
 
 def _user_dict(user: User) -> dict:
+    current_plan = plan_for_user(user)
+    entitlements = entitlements_for_user(user)
     missing_setup = []
     if not user.sender_name:
         missing_setup.append("sender_profile")
@@ -282,7 +343,11 @@ def _user_dict(user: User) -> dict:
         "id": user.id,
         "email": user.email,
         "name": user.name,
-        "plan": user.plan.value if hasattr(user.plan, "value") else user.plan,
+        "vertical": normalize_vertical(getattr(user, "vertical", None)),
+        "vertical_config": get_vertical_config(getattr(user, "vertical", None)),
+        "plan": current_plan["plan_type"].value if hasattr(current_plan["plan_type"], "value") else current_plan["plan_type"],
+        "plan_key": current_plan["id"],
+        "plan_name": current_plan["name"],
         "credits": user.credits,
         "leads_quota": user.leads_quota,
         "leads_used": user.leads_used,
@@ -297,6 +362,7 @@ def _user_dict(user: User) -> dict:
         "has_gmail_password": bool(user.gmail_password),
         "has_groq_api_key": bool(user.groq_api_key),
         "missing_setup": missing_setup,
+        "entitlements": entitlements,
     }
 
 

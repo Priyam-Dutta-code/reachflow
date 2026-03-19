@@ -1,21 +1,31 @@
 """
-routers/payments.py - Cashfree payments with verified webhooks.
+routers/payments.py - Vertical-aware Cashfree payments with verified webhooks.
 """
 import base64
-import hmac
 import hashlib
+import hmac
 import time
 from datetime import datetime, timedelta
 
 import requests
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from config import API_URL, CASHFREE_APP_ID, CASHFREE_BASE_URL, CASHFREE_ENV, CASHFREE_SECRET, FRONTEND_URL
-from database import Payment, PlanType, User, get_db
+from database import Payment, User, get_db
 from routers.auth import get_current_user
 from security import enforce_rate_limit
+from verticals import (
+    get_plan,
+    get_topup,
+    get_vertical_config,
+    get_vertical_plans,
+    get_vertical_topup,
+    is_known_plan,
+    is_known_topup,
+    normalize_vertical,
+)
 
 router = APIRouter()
 
@@ -26,46 +36,16 @@ CF_HEADERS = {
     "Content-Type": "application/json",
 }
 
-PLANS = {
-    "pro": {
-        "name": "ReachFlow Pro",
-        "amount": 999.0,
-        "leads_quota": 1000,
-        "credits": 500,
-        "plan_type": PlanType.pro,
-    },
-    "agency": {
-        "name": "ReachFlow Agency",
-        "amount": 2999.0,
-        "leads_quota": 999999,
-        "credits": 2000,
-        "plan_type": PlanType.agency,
-    },
-    "lifetime": {
-        "name": "ReachFlow Lifetime",
-        "amount": 9999.0,
-        "leads_quota": 999999,
-        "credits": 999999,
-        "plan_type": PlanType.lifetime,
-    },
-    "credits_100": {
-        "name": "100 Email Credits",
-        "amount": 199.0,
-        "credits": 100,
-        "plan_type": None,
-    },
-}
-
 
 class CreateOrderRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    plan: str = Field(min_length=2, max_length=40)
+    plan: str = Field(min_length=2, max_length=80)
 
 
 class VerifyRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     order_id: str = Field(min_length=6, max_length=120)
-    plan: str = Field(min_length=2, max_length=40)
+    plan: str = Field(min_length=2, max_length=80)
 
 
 def _verify_webhook_signature(raw_body: str, signature: str, timestamp: str) -> bool:
@@ -96,6 +76,14 @@ def _pending_payment(order_id: str, db: Session) -> Payment | None:
     return db.query(Payment).filter(Payment.provider_id == order_id).first()
 
 
+def _resolve_purchase(item_id: str, vertical: str | None) -> tuple[str, dict]:
+    if is_known_plan(item_id):
+        return "plan", get_plan(item_id, vertical)
+    if is_known_topup(item_id):
+        return "topup", get_topup(item_id, vertical)
+    raise HTTPException(400, f"Invalid plan: {item_id}")
+
+
 @router.post("/create-order")
 def create_order(
     body: CreateOrderRequest,
@@ -105,13 +93,13 @@ def create_order(
 ):
     enforce_rate_limit(request, "payment_create", limit=8, window_seconds=300, identifier=current_user.id)
 
-    plan = PLANS.get(body.plan)
-    if not plan:
-        raise HTTPException(400, f"Invalid plan: {body.plan}")
+    purchase_type, purchase = _resolve_purchase(body.plan, getattr(current_user, "vertical", None))
+    if purchase.get("amount", 0) <= 0:
+        raise HTTPException(400, "Free starter plans do not require checkout.")
     if not CASHFREE_APP_ID or not CASHFREE_SECRET:
         raise HTTPException(500, "Cashfree is not configured. Add CASHFREE_APP_ID and CASHFREE_SECRET_KEY.")
 
-    order_id = f"RF_{current_user.id[:8]}_{body.plan}_{int(datetime.utcnow().timestamp())}"
+    order_id = f"RF_{current_user.id[:8]}_{int(datetime.utcnow().timestamp())}"
     phone = (
         (current_user.sender_phone or "9999999999")
         .replace(" ", "")
@@ -122,9 +110,9 @@ def create_order(
 
     payload = {
         "order_id": order_id,
-        "order_amount": plan["amount"],
+        "order_amount": purchase["amount"],
         "order_currency": "INR",
-        "order_note": f"ReachFlow - {plan['name']}",
+        "order_note": f"ReachFlow - {purchase['name']}",
         "customer_details": {
             "customer_id": current_user.id[:50],
             "customer_email": current_user.email,
@@ -146,10 +134,10 @@ def create_order(
         db.add(
             Payment(
                 user_id=current_user.id,
-                amount=plan["amount"],
+                amount=purchase["amount"],
                 currency="INR",
                 plan=body.plan,
-                payment_type="one_time" if body.plan in {"lifetime", "credits_100"} else "subscription",
+                payment_type="one_time" if purchase_type == "topup" else "subscription",
                 provider="cashfree",
                 provider_id=order_id,
                 status="pending",
@@ -161,8 +149,9 @@ def create_order(
     return {
         "order_id": order_id,
         "payment_session_id": data["payment_session_id"],
-        "amount": plan["amount"],
-        "plan_name": plan["name"],
+        "amount": purchase["amount"],
+        "plan_name": purchase["name"],
+        "vertical": purchase.get("vertical", normalize_vertical(getattr(current_user, "vertical", None))),
         "cashfree_env": CASHFREE_ENV,
     }
 
@@ -192,9 +181,9 @@ def verify_payment(
     if status != "PAID":
         raise HTTPException(402, f"Payment not completed. Status: {status}")
 
-    plan_cfg = PLANS.get(body.plan, {})
-    _upgrade_user(current_user, body.plan, plan_cfg, body.order_id, db)
-    return {"success": True, "plan": body.plan}
+    purchase_type, purchase = _resolve_purchase(body.plan, getattr(current_user, "vertical", None))
+    _upgrade_user(current_user, body.plan, purchase_type, purchase, body.order_id, db)
+    return {"success": True, "plan": body.plan, "vertical": purchase.get("vertical")}
 
 
 @router.post("/webhook")
@@ -220,122 +209,57 @@ async def cashfree_webhook(request: Request, db: Session = Depends(get_db)):
     if pending:
         user = db.query(User).filter(User.id == pending.user_id).first()
         if user:
-            _upgrade_user(user, pending.plan, PLANS.get(pending.plan, {}), order_id, db)
-            return {"received": True}
-
-    parts = order_id.split("_")
-    if len(parts) >= 4:
-        uid_part = parts[1]
-        user = next((u for u in db.query(User).all() if u.id.startswith(uid_part)), None)
-        if user:
-            plan_key = parts[2]
-            _upgrade_user(user, plan_key, PLANS.get(plan_key, {}), order_id, db)
+            purchase_type, purchase = _resolve_purchase(pending.plan, getattr(user, "vertical", None))
+            _upgrade_user(user, pending.plan, purchase_type, purchase, order_id, db)
 
     return {"received": True}
 
 
-def _upgrade_user(user: User, plan_key: str, plan_cfg: dict, order_id: str, db: Session):
+def _upgrade_user(user: User, purchase_key: str, purchase_type: str, purchase: dict, order_id: str, db: Session):
     existing = db.query(Payment).filter(Payment.provider_id == order_id).first()
     if existing and existing.status == "completed":
         return
 
-    if plan_key == "credits_100":
-        user.credits = (user.credits or 0) + plan_cfg.get("credits", 100)
-    elif plan_cfg.get("plan_type"):
-        user.plan = plan_cfg["plan_type"]
-        user.credits = plan_cfg.get("credits", 0)
-        user.leads_quota = plan_cfg.get("leads_quota", 100)
-        if plan_cfg["plan_type"] != PlanType.lifetime:
-            user.subscription_end = datetime.utcnow() + timedelta(days=32)
+    if purchase_type == "topup":
+        user.credits = (user.credits or 0) + purchase.get("credits", 0)
+    else:
+        user.vertical = purchase["vertical"]
+        user.plan = purchase["plan_type"]
+        user.plan_key = purchase_key
+        user.credits = purchase.get("credits", 0)
+        user.leads_quota = purchase.get("leads_quota", 100)
+        user.subscription_end = datetime.utcnow() + timedelta(days=32) if purchase["plan_type"].value != "free" else None
 
     if existing:
         existing.status = "completed"
-        existing.amount = plan_cfg.get("amount", existing.amount)
-        existing.plan = plan_key
-        existing.credits_added = plan_cfg.get("credits", 0) if plan_key == "credits_100" else 0
+        existing.amount = purchase.get("amount", existing.amount)
+        existing.plan = purchase_key
+        existing.credits_added = purchase.get("credits", 0) if purchase_type == "topup" else 0
     else:
         db.add(
             Payment(
                 user_id=user.id,
-                amount=plan_cfg.get("amount", 0),
+                amount=purchase.get("amount", 0),
                 currency="INR",
-                plan=plan_key,
-                payment_type="one_time" if plan_key in ("lifetime", "credits_100") else "subscription",
+                plan=purchase_key,
+                payment_type="one_time" if purchase_type == "topup" else "subscription",
                 provider="cashfree",
                 provider_id=order_id,
                 status="completed",
-                credits_added=plan_cfg.get("credits", 0) if plan_key == "credits_100" else 0,
+                credits_added=purchase.get("credits", 0) if purchase_type == "topup" else 0,
             )
         )
     db.commit()
 
 
 @router.get("/plans")
-def get_plans():
+def get_plans(vertical: str | None = Query(default=None)):
+    selected_vertical = normalize_vertical(vertical)
+    plans = get_vertical_plans(selected_vertical)
+    topup = get_vertical_topup(selected_vertical)
     return {
-        "plans": [
-            {
-                "id": "free",
-                "name": "Free",
-                "amount": 0,
-                "per": "/mo",
-                "leads_quota": 100,
-                "emails": 50,
-                "features": [
-                    "100 leads/month",
-                    "50 emails/month",
-                    "Google Maps",
-                    "AI email writing",
-                    "Basic analytics",
-                ],
-            },
-            {
-                "id": "pro",
-                "name": "Pro",
-                "amount": 999,
-                "per": "/mo",
-                "leads_quota": 1000,
-                "emails": 500,
-                "popular": True,
-                "features": [
-                    "1,000 leads/month",
-                    "500 emails/month",
-                    "All lead sources",
-                    "Follow-up automation",
-                    "Reply detection",
-                    "Full analytics",
-                ],
-            },
-            {
-                "id": "agency",
-                "name": "Agency",
-                "amount": 2999,
-                "per": "/mo",
-                "leads_quota": -1,
-                "emails": 2000,
-                "features": [
-                    "Unlimited leads",
-                    "2,000 emails/month",
-                    "Everything in Pro",
-                    "Priority support",
-                    "API access",
-                ],
-            },
-            {
-                "id": "lifetime",
-                "name": "Lifetime",
-                "amount": 9999,
-                "per": " once",
-                "leads_quota": -1,
-                "emails": -1,
-                "badge": "Best Value",
-                "features": [
-                    "Everything in Agency",
-                    "Pay once - use forever",
-                    "All future features",
-                    "Founder badge",
-                ],
-            },
-        ],
-        "credits": {"id": "credits_100", "name": "100 Email Credits", "amount": 199},
+        "vertical": selected_vertical,
+        "vertical_config": get_vertical_config(selected_vertical),
+        "plans": plans,
+        "credits": topup,
     }

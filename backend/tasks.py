@@ -25,6 +25,7 @@ from config import ENABLE_BACKGROUND_WORKER, REDIS_URL  # noqa: E402
 from database import Campaign, CampaignStatus, EmailLog, Lead, LeadStatus, SessionLocal, User  # noqa: E402
 from security import secret_manager  # noqa: E402
 from services.campaign_service import sync_campaign_stats  # noqa: E402
+from verticals import entitlements_for_user  # noqa: E402
 
 broker_url = REDIS_URL or "memory://"
 result_backend = REDIS_URL or "cache+memory://"
@@ -143,13 +144,16 @@ def _send_batch_impl(user_id: str, campaign_id: int):
         db.close()
         return
 
+    entitlements = entitlements_for_user(user)
+    daily_limit = min(campaign.emails_per_day, entitlements.get("daily_send_cap", campaign.emails_per_day))
+
     pending = db.query(Lead).filter(
         Lead.user_id == user_id,
         Lead.campaign_id == campaign_id,
         Lead.status == LeadStatus.pending,
         Lead.email != None,  # noqa: E711
         Lead.email != "",
-    ).limit(campaign.emails_per_day).all()
+    ).limit(daily_limit).all()
 
     sent = failed = 0
     for lead in pending:
@@ -211,7 +215,12 @@ def _followup_impl(user_id: str):
         db.close()
         return
 
-    replied_emails = _check_imap_replies(user)
+    entitlements = entitlements_for_user(user)
+    if not entitlements.get("follow_up_automation"):
+        db.close()
+        return
+
+    replied_emails = _check_imap_replies(user) if entitlements.get("reply_checks") else set()
     if replied_emails:
         db.query(Lead).filter(
             Lead.user_id == user_id,

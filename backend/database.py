@@ -65,7 +65,9 @@ class User(Base):
     id               = Column(String, primary_key=True)   # Supabase UUID
     email            = Column(String, unique=True, nullable=False, index=True)
     name             = Column(String)
+    vertical         = Column(String, default="business_growth")
     plan             = Column(Enum(PlanType), default=PlanType.free)
+    plan_key         = Column(String, default="business_growth_starter")
     credits          = Column(Integer, default=50)
     leads_quota      = Column(Integer, default=100)
     leads_used       = Column(Integer, default=0)

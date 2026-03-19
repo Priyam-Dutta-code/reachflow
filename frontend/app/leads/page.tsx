@@ -1,35 +1,13 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, Eye, Filter, Sparkles, Target } from "lucide-react";
+import { ArrowRight, Eye, Filter, Sparkles, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Reveal } from "@/components/Reveal";
 import Shell from "@/components/Shell";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-
-const SOURCE_DETAILS = {
-  web_search: {
-    description: "Search the open web for companies, websites, and email-ready outreach targets.",
-    note: "Best option for broad prospecting and larger lead pools.",
-  },
-  google_maps: {
-    description: "Discover local companies and location-based prospects.",
-    note: "Requires a Google Maps API key.",
-  },
-  linkedin: {
-    description: "Target people-first prospecting, founders, and decision-makers.",
-    note: "Browser mode needs sender credentials. Apollo mode needs an Apollo key.",
-  },
-  apollo: {
-    description: "Pull tightly filtered title-based lists when Apollo is connected.",
-    note: "Requires an Apollo API key.",
-  },
-  job_portal: {
-    description: "Capture companies actively hiring for the roles you want to reach.",
-    note: "Best free-mode option: LinkedIn Jobs.",
-  },
-};
+import { getVerticalConfig, normalizeVertical } from "@/lib/verticals";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "border-white/10 bg-white/5 text-white/70",
@@ -38,9 +16,20 @@ const STATUS_STYLES: Record<string, string> = {
   bounced: "border-rose-400/20 bg-rose-400/10 text-rose-200",
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+  google_maps: "Google Maps",
+  linkedin_jobs: "LinkedIn Jobs",
+  indeed: "Indeed",
+  naukri: "Naukri",
+  web_search: "Open Web",
+  apollo: "Apollo",
+  manual: "Manual",
+};
+
 export default function LeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
@@ -51,13 +40,15 @@ export default function LeadsPage() {
   const [previewLeadId, setPreviewLeadId] = useState<number | null>(null);
   const { session } = useAuth();
 
+  const vertical = getVerticalConfig(profile?.vertical);
+
   const [form, setForm] = useState({
-    source: "job_portal",
     query: "",
     location: "",
     industry: "",
-    method: "selenium",
-    portal: "linkedin_jobs",
+    audience: "",
+    offer: "",
+    goal: "",
     max: 40,
     campaign_id: "",
   });
@@ -72,14 +63,16 @@ export default function LeadsPage() {
         params.set("status", nextStatus);
       }
 
-      const [leadData, campaignData] = await Promise.all([
+      const [leadData, campaignData, me] = await Promise.all([
         apiFetch(`/api/leads/?${params.toString()}`),
         apiFetch("/api/campaigns/"),
+        apiFetch("/api/auth/me"),
       ]);
 
       setLeads(leadData.leads ?? []);
       setTotal(leadData.total ?? 0);
       setCampaigns(campaignData ?? []);
+      setProfile(me);
       setError("");
     } catch (requestError: any) {
       setError(requestError.message);
@@ -90,11 +83,11 @@ export default function LeadsPage() {
     if (session) {
       load(1, status);
     }
-  }, [session]);
+  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generateLeads = async () => {
     if (!form.query.trim()) {
-      setError("Enter a role, keyword, or search term before importing leads.");
+      setError(`Enter ${vertical.leadInputs.queryLabel.toLowerCase()} before generating leads.`);
       return;
     }
 
@@ -105,15 +98,16 @@ export default function LeadsPage() {
       const response = await apiFetch("/api/leads/generate", {
         method: "POST",
         body: JSON.stringify({
+          source: "auto",
           ...form,
           max: Number(form.max),
           campaign_id: form.campaign_id ? Number(form.campaign_id) : null,
+          vertical: normalizeVertical(profile?.vertical),
         }),
       });
 
       const nextMessage = [response.message, response.warning].filter(Boolean).join(" ");
       setMessage(nextMessage);
-
       if (response.status === "completed") {
         setPage(1);
         await load(1, status);
@@ -154,7 +148,6 @@ export default function LeadsPage() {
   };
 
   const filteredStatusButtons = ["", "pending", "sent", "replied", "bounced"];
-  const sourceDetail = SOURCE_DETAILS[form.source as keyof typeof SOURCE_DETAILS];
 
   const campaignOptions = useMemo(
     () => campaigns.map((campaign) => ({ value: String(campaign.id), label: campaign.name })),
@@ -167,18 +160,13 @@ export default function LeadsPage() {
         <Reveal>
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <div className="section-label">Lead studio</div>
-              <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Build email-ready lists your team can use right away.
-              </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-                Generate leads for job search, recruiting, client outreach, or outbound sales, then route them into
-                the right campaign before you send.
-              </p>
+              <div className="section-label">{vertical.label}</div>
+              <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">{vertical.leadTitle}</h1>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">{vertical.leadSummary}</p>
             </div>
             <div className="glass-card flex items-center gap-4 px-5 py-4">
               <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-white/45">Prospect records</div>
+                <div className="text-xs uppercase tracking-[0.24em] text-white/45">Lead records</div>
                 <div className="mt-2 font-display text-4xl font-semibold tracking-[-0.04em]">{total}</div>
               </div>
               <Target className="h-8 w-8 text-[var(--accent)]" />
@@ -198,7 +186,7 @@ export default function LeadsPage() {
           </div>
         )}
 
-        <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid gap-4 xl:grid-cols-[0.98fr_1.02fr]">
           <Reveal>
             <div className="glass-card p-6">
               <div className="flex items-center gap-3">
@@ -206,93 +194,107 @@ export default function LeadsPage() {
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="font-display text-2xl font-semibold tracking-[-0.04em]">Import new leads</div>
-                  <div className="text-sm text-white/60">{sourceDetail.description}</div>
+                  <div className="font-display text-2xl font-semibold tracking-[-0.04em]">{vertical.label} intelligence</div>
+                  <div className="text-sm text-white/60">{profile?.vertical_config?.generator_note || "ReachFlow chooses the right public sources for this workflow."}</div>
                 </div>
               </div>
 
               <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-7 text-white/70">
-                {sourceDetail.note}
+                One generate action. ReachFlow handles source selection, enrichment, and send-ready filtering behind the scenes for this vertical.
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <select
-                  className="field w-full"
-                  onChange={(event) => setForm({ ...form, source: event.target.value })}
-                  value={form.source}
-                >
-                  <option value="web_search">Web Search</option>
-                  <option value="job_portal">Job portals</option>
-                  <option value="google_maps">Google Maps</option>
-                  <option value="linkedin">LinkedIn</option>
-                  <option value="apollo">Apollo</option>
-                </select>
-                <select
-                  className="field w-full"
-                  onChange={(event) => setForm({ ...form, campaign_id: event.target.value })}
-                  value={form.campaign_id}
-                >
-                  <option value="">Keep unassigned for now</option>
-                  {campaignOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="field w-full md:col-span-2"
-                  onChange={(event) => setForm({ ...form, query: event.target.value })}
-                  placeholder="Role, keyword, or target buyer type"
-                  value={form.query}
-                />
-                <input
-                  className="field w-full"
-                  onChange={(event) => setForm({ ...form, location: event.target.value })}
-                  placeholder="City, region, or market"
-                  value={form.location}
-                />
-                <input
-                  className="field w-full"
-                  onChange={(event) => setForm({ ...form, industry: event.target.value })}
-                  placeholder="Industry, niche, or ICP"
-                  value={form.industry}
-                />
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/42">{vertical.leadInputs.queryLabel}</span>
+                  <input
+                    className="field w-full"
+                    onChange={(event) => setForm({ ...form, query: event.target.value })}
+                    placeholder={vertical.leadInputs.queryPlaceholder}
+                    value={form.query}
+                  />
+                </label>
 
-                {form.source === "linkedin" && (
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/42">{vertical.leadInputs.locationLabel}</span>
+                  <input
+                    className="field w-full"
+                    onChange={(event) => setForm({ ...form, location: event.target.value })}
+                    placeholder={vertical.leadInputs.locationPlaceholder}
+                    value={form.location}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/42">{vertical.leadInputs.industryLabel}</span>
+                  <input
+                    className="field w-full"
+                    onChange={(event) => setForm({ ...form, industry: event.target.value })}
+                    placeholder={vertical.leadInputs.industryPlaceholder}
+                    value={form.industry}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/42">{vertical.leadInputs.audienceLabel}</span>
+                  <input
+                    className="field w-full"
+                    onChange={(event) => setForm({ ...form, audience: event.target.value })}
+                    placeholder={vertical.leadInputs.audiencePlaceholder}
+                    value={form.audience}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/42">{vertical.leadInputs.offerLabel}</span>
+                  <input
+                    className="field w-full"
+                    onChange={(event) => setForm({ ...form, offer: event.target.value })}
+                    placeholder={vertical.leadInputs.offerPlaceholder}
+                    value={form.offer}
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/42">{vertical.leadInputs.goalLabel}</span>
+                  <input
+                    className="field w-full"
+                    onChange={(event) => setForm({ ...form, goal: event.target.value })}
+                    placeholder={vertical.leadInputs.goalPlaceholder}
+                    value={form.goal}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/42">Attach to campaign</span>
                   <select
                     className="field w-full"
-                    onChange={(event) => setForm({ ...form, method: event.target.value })}
-                    value={form.method}
+                    onChange={(event) => setForm({ ...form, campaign_id: event.target.value })}
+                    value={form.campaign_id}
                   >
-                    <option value="selenium">Browser-assisted</option>
-                    <option value="apollo">Apollo lookup</option>
+                    <option value="">Keep unassigned for now</option>
+                    {campaignOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
-                )}
+                </label>
 
-                {form.source === "job_portal" && (
-                  <select
+                <label className="space-y-2">
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/42">Result count</span>
+                  <input
                     className="field w-full"
-                    onChange={(event) => setForm({ ...form, portal: event.target.value })}
-                    value={form.portal}
-                  >
-                    <option value="linkedin_jobs">LinkedIn Jobs</option>
-                    <option value="naukri">Naukri</option>
-                    <option value="indeed">Indeed</option>
-                  </select>
-                )}
-
-                <input
-                  className="field w-full"
-                  max={200}
-                  min={1}
-                  onChange={(event) => setForm({ ...form, max: Number(event.target.value) })}
-                  type="number"
-                  value={form.max}
-                />
+                    max={200}
+                    min={1}
+                    onChange={(event) => setForm({ ...form, max: Number(event.target.value) })}
+                    type="number"
+                    value={form.max}
+                  />
+                </label>
               </div>
 
               <button className="primary-button mt-6" disabled={loading} onClick={generateLeads} type="button">
-                {loading ? "Importing leads..." : "Import leads"}
+                {loading ? "Generating..." : "Generate leads"}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -300,13 +302,13 @@ export default function LeadsPage() {
 
           <Reveal delay={0.08}>
             <div className="glass-card p-6">
-              <div className="section-label !px-3 !py-1.5 !text-[10px]">Operator playbook</div>
+              <div className="section-label !px-3 !py-1.5 !text-[10px]">Lead quality rules</div>
               <div className="mt-5 space-y-4">
                 {[
-                  "Use LinkedIn Jobs when you want hiring-company signals and Web Search when you want broader prospecting volume.",
-                  "Every run now prioritizes leads with usable email addresses so campaigns stay send-ready.",
-                  "Public emails are used when available, and team inbox fallbacks are added when a company domain is found.",
-                  "Preview the generated copy from any row before you launch outreach to a new audience.",
+                  "The platform prioritizes records with usable public emails or credible team inboxes before they reach your table.",
+                  "Campaign-ready leads can be attached immediately after generation so your next send does not require a cleanup step.",
+                  "Email previews adapt to the vertical, so career outreach and commercial outreach no longer share the same writing style.",
+                  "Use narrower goals and sharper offer language when you want higher-fit lead lists instead of broader volume.",
                 ].map((item) => (
                   <div
                     key={item}
@@ -315,10 +317,6 @@ export default function LeadsPage() {
                     {item}
                   </div>
                 ))}
-              </div>
-              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-emerald-100">
-                <CheckCircle2 className="h-4 w-4" />
-                Client-ready sourcing workflow
               </div>
             </div>
           </Reveal>
@@ -349,7 +347,7 @@ export default function LeadsPage() {
               </div>
               <div className="inline-flex items-center gap-2 text-sm text-white/55">
                 <Filter className="h-4 w-4" />
-                Keep prospect lists clean and campaign-ready.
+                Keep lists clean, segmented, and campaign-ready.
               </div>
             </div>
 
@@ -358,7 +356,7 @@ export default function LeadsPage() {
                 <table className="min-w-full border-collapse text-left text-sm">
                   <thead className="bg-white/[0.04] text-xs uppercase tracking-[0.24em] text-white/45">
                     <tr>
-                      {["Lead", "Company", "Campaign", "Status", "Source", "Actions"].map((header) => (
+                      {["Lead", "Company", "Campaign", "Status", "Origin", "Actions"].map((header) => (
                         <th key={header} className="px-4 py-4 font-medium">
                           {header}
                         </th>
@@ -392,17 +390,11 @@ export default function LeadsPage() {
                           </select>
                         </td>
                         <td className="px-4 py-4">
-                          <span className={`status-pill ${STATUS_STYLES[lead.status] || STATUS_STYLES.pending}`}>
-                            {lead.status}
-                          </span>
+                          <span className={`status-pill ${STATUS_STYLES[lead.status] || STATUS_STYLES.pending}`}>{lead.status}</span>
                         </td>
-                        <td className="px-4 py-4 text-white/55">{lead.source?.replace(/_/g, " ")}</td>
+                        <td className="px-4 py-4 text-white/55">{SOURCE_LABELS[lead.source] || String(lead.source).replace(/_/g, " ")}</td>
                         <td className="px-4 py-4">
-                          <button
-                            className="secondary-button !px-4 !py-2"
-                            onClick={() => previewEmail(lead.id)}
-                            type="button"
-                          >
+                          <button className="secondary-button !px-4 !py-2" onClick={() => previewEmail(lead.id)} type="button">
                             <Eye className="h-4 w-4" />
                             {previewLeadId === lead.id ? "Loading..." : "Preview"}
                           </button>
@@ -415,7 +407,7 @@ export default function LeadsPage() {
 
               {!leads.length && (
                 <div className="px-6 py-16 text-center text-sm text-white/45">
-                  No leads imported yet. Start with Web Search for scale or LinkedIn Jobs for hiring-focused outreach.
+                  No leads yet. Start with one focused generation run for this vertical and ReachFlow will return send-ready records here.
                 </div>
               )}
             </div>

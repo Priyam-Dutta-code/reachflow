@@ -8,6 +8,7 @@ import { Reveal } from "@/components/Reveal";
 import Shell from "@/components/Shell";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { getVerticalConfig } from "@/lib/verticals";
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "border-white/10 bg-white/5 text-white/70",
@@ -18,6 +19,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
   const [showNew, setShowNew] = useState(false);
   const [launchingId, setLaunchingId] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -33,8 +35,9 @@ export default function CampaignsPage() {
 
   const load = async () => {
     try {
-      const data = await apiFetch("/api/campaigns/");
-      setCampaigns(data ?? []);
+      const [campaignData, me] = await Promise.all([apiFetch("/api/campaigns/"), apiFetch("/api/auth/me")]);
+      setCampaigns(campaignData ?? []);
+      setProfile(me);
       setError("");
     } catch (requestError: any) {
       setError(requestError.message);
@@ -110,10 +113,10 @@ export default function CampaignsPage() {
             <div>
               <div className="section-label">Campaign control</div>
               <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-                Create outbound campaigns that feel deliberate, not automated.
+                Build campaigns that match the {getVerticalConfig(profile?.vertical).label.toLowerCase()} workflow.
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-                Organize audiences, control send pace, and keep every campaign aligned from first draft through reply.
+                Organize audiences, control send pace, and keep every campaign aligned from lead generation through reply handling.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -148,7 +151,7 @@ export default function CampaignsPage() {
               <textarea
                 className="textarea-field min-h-[130px] w-full md:col-span-2"
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
-                placeholder="Describe the audience, offer, or use case behind this campaign."
+                placeholder={`Describe the audience, angle, or outcome behind this ${getVerticalConfig(profile?.vertical).tag.toLowerCase()} campaign.`}
                 value={form.description}
               />
               <input
@@ -257,8 +260,8 @@ export default function CampaignsPage() {
 
                   {campaign.eligible_leads === 0 && (
                     <div className="mt-5 rounded-[22px] border border-amber-400/15 bg-amber-400/10 px-4 py-4 text-sm leading-7 text-amber-100">
-                      This campaign does not have any send-ready leads yet. Head to Lead Studio and attach qualified
-                      prospects before you launch.
+                      This campaign does not have any send-ready leads yet. Head to Lead Studio and generate qualified
+                      records for this workflow before you launch.
                     </div>
                   )}
                 </div>
@@ -275,8 +278,7 @@ export default function CampaignsPage() {
               </div>
               <h2 className="mt-6 font-display text-3xl font-semibold tracking-[-0.04em]">No campaigns yet</h2>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/65">
-                Create your first campaign to define the audience, angle, and sending pace before you activate
-                outreach.
+                Create your first campaign to define the audience, angle, and sending pace before you activate outreach.
               </p>
               <button className="primary-button mt-6" onClick={() => setShowNew(true)} type="button">
                 <Plus className="h-4 w-4" />

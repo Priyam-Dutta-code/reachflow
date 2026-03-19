@@ -7,9 +7,11 @@ import { Reveal } from "@/components/Reveal";
 import Shell from "@/components/Shell";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { getVerticalConfig } from "@/lib/verticals";
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [error, setError] = useState("");
   const { session } = useAuth();
 
@@ -18,9 +20,10 @@ export default function AnalyticsPage() {
       return;
     }
 
-    apiFetch("/api/analytics/overview")
-      .then((analytics) => {
+    Promise.all([apiFetch("/api/analytics/overview"), apiFetch("/api/auth/me")])
+      .then(([analytics, me]) => {
         setData(analytics);
+        setProfile(me);
         setError("");
       })
       .catch((requestError: any) => setError(requestError.message));
@@ -42,16 +45,15 @@ export default function AnalyticsPage() {
     <Shell>
       <div className="space-y-6">
         <Reveal>
-          <div>
-            <div className="section-label">Analytics</div>
-            <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
-              Read what is working across the pipeline.
-            </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
-              Track lead volume, sourcing quality, send performance, and reply movement so every next campaign is
-              shaped by evidence instead of guesswork.
-            </p>
-          </div>
+            <div>
+              <div className="section-label">Analytics</div>
+              <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
+                Read what is working across the {getVerticalConfig(profile?.vertical).tag.toLowerCase()} pipeline.
+              </h1>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
+                Track lead volume, sourcing quality, send performance, and reply movement so every next campaign is shaped by evidence instead of guesswork.
+              </p>
+            </div>
         </Reveal>
 
         {error && (

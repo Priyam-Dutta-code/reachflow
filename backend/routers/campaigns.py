@@ -11,6 +11,7 @@ from routers.auth import get_current_user
 from security import enforce_rate_limit, secret_manager
 from services.campaign_service import sync_campaign_stats
 from tasks import run_campaign_batch
+from verticals import entitlements_for_user
 
 router = APIRouter()
 
@@ -20,7 +21,7 @@ class CampaignCreate(BaseModel):
 
     name: str = Field(min_length=2, max_length=120)
     description: str = Field(default="", max_length=600)
-    emails_per_day: int = Field(default=50, ge=1, le=500)
+    emails_per_day: int = Field(default=50, ge=1, le=1000)
     send_time: str = Field(default="09:00", pattern=r"^\d{2}:\d{2}$")
     follow_up_days: int = Field(default=5, ge=1, le=30)
 
@@ -30,7 +31,7 @@ class CampaignUpdate(BaseModel):
 
     name: Optional[str] = Field(default=None, min_length=2, max_length=120)
     description: Optional[str] = Field(default=None, max_length=600)
-    emails_per_day: Optional[int] = Field(default=None, ge=1, le=500)
+    emails_per_day: Optional[int] = Field(default=None, ge=1, le=1000)
     send_time: Optional[str] = Field(default=None, pattern=r"^\d{2}:\d{2}$")
     follow_up_days: Optional[int] = Field(default=None, ge=1, le=30)
     status: Optional[CampaignStatus] = None
@@ -42,6 +43,16 @@ def create_campaign(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    entitlements = entitlements_for_user(current_user)
+    current_count = db.query(Campaign).filter(Campaign.user_id == current_user.id).count()
+    if current_count >= entitlements.get("campaign_slots", 1):
+        raise HTTPException(402, "Your current plan has reached its campaign limit. Upgrade to create more campaigns.")
+    if body.emails_per_day > entitlements.get("daily_send_cap", 25):
+        raise HTTPException(
+            400,
+            f"Your current plan supports up to {entitlements.get('daily_send_cap', 25)} emails per day per campaign.",
+        )
+
     campaign = Campaign(
         user_id=current_user.id,
         name=body.name,
@@ -89,7 +100,15 @@ def update_campaign(
     if not campaign:
         raise HTTPException(404, "Campaign not found")
 
-    for field, value in body.model_dump(exclude_none=True).items():
+    entitlements = entitlements_for_user(current_user)
+    payload = body.model_dump(exclude_none=True)
+    if payload.get("emails_per_day", campaign.emails_per_day) > entitlements.get("daily_send_cap", 25):
+        raise HTTPException(
+            400,
+            f"Your current plan supports up to {entitlements.get('daily_send_cap', 25)} emails per day per campaign.",
+        )
+
+    for field, value in payload.items():
         setattr(campaign, field, value)
     campaign.updated_at = datetime.utcnow()
     db.commit()
@@ -118,6 +137,13 @@ def send_now(
 
     if current_user.credits <= 0:
         raise HTTPException(402, "No email credits left. Top up to continue.")
+
+    entitlements = entitlements_for_user(current_user)
+    if campaign.emails_per_day > entitlements.get("daily_send_cap", 25):
+        raise HTTPException(
+            400,
+            f"Your current plan supports up to {entitlements.get('daily_send_cap', 25)} emails per day per campaign.",
+        )
 
     try:
         smtp_password = secret_manager.decrypt(current_user.gmail_password)
@@ -182,5 +208,6 @@ def _camp_dict(campaign: Campaign, db: Session) -> dict:
         "total_replied": campaign.total_replied,
         "total_bounced": campaign.total_bounced,
         "eligible_leads": eligible,
+        "daily_cap": campaign.emails_per_day,
         "created_at": str(campaign.created_at),
     }

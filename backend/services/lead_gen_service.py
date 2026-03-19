@@ -12,6 +12,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from config import APOLLO_API_KEY, GMAIL_PASSWORD, GOOGLE_MAPS_API_KEY, SENDER_EMAIL
+from verticals import normalize_vertical
 
 HEADERS = {
     "User-Agent": (
@@ -77,6 +78,7 @@ PORTAL_LABELS = {
 }
 CAREER_ALIASES = ["careers", "jobs", "hiring", "talent", "recruiting", "hr", "people"]
 BUSINESS_ALIASES = ["hello", "sales", "info", "partnerships", "growth", "contact"]
+PARTNERSHIP_ALIASES = ["partnerships", "alliances", "bd", "hello", "info"]
 EMAIL_NEGATIVE_HINTS = {"abuse", "billing", "care", "legal", "noreply", "no-reply", "privacy", "security", "support"}
 MULTIPART_TLDS = {"co.in", "co.uk", "com.au", "com.br", "com.mx", "co.jp", "org.uk"}
 COMPANY_STOPWORDS = {
@@ -113,24 +115,42 @@ def _build_result(
     source_requested: str,
     source_used: str,
     warning: str | None = None,
+    resources_used: list[str] | None = None,
 ) -> dict:
     return {
         "leads": leads,
         "source_requested": source_requested,
         "source_used": source_used,
         "warning": warning,
+        "resources_used": resources_used or [],
     }
 
 
 def run_lead_gen(params: dict) -> dict:
     """Run lead generation and return email-ready leads plus source metadata."""
-    source = params.get("source", "google_maps")
+    source = params.get("source", "auto")
     query = params.get("query", "")
     location = params.get("location", "")
     industry = params.get("industry", "")
+    audience = params.get("audience", "")
+    offer = params.get("offer", "")
+    goal = params.get("goal", "")
     method = params.get("method", "selenium")
     portal = params.get("portal", "naukri")
     max_r = int(params.get("max", 50))
+    vertical = normalize_vertical(params.get("vertical"))
+
+    if source == "auto":
+        return _run_vertical_strategy(
+            vertical=vertical,
+            query=query,
+            location=location,
+            industry=industry,
+            audience=audience,
+            offer=offer,
+            goal=goal,
+            max_results=max_r,
+        )
 
     if source == "google_maps":
         if not GOOGLE_MAPS_API_KEY:
@@ -142,7 +162,7 @@ def run_lead_gen(params: dict) -> dict:
             raise LeadGenerationError(
                 "No email-ready Google Maps leads were found for that search. Try Web Search, a broader query, or a nearby location."
             )
-        return _build_result(leads, source_requested=source, source_used="google_maps")
+        return _build_result(leads, source_requested=source, source_used="google_maps", resources_used=["Google Maps"])
 
     if source == "linkedin":
         if method == "apollo":
@@ -155,7 +175,7 @@ def run_lead_gen(params: dict) -> dict:
                 raise LeadGenerationError(
                     "Apollo did not return any email-ready matches. Try a broader title, industry, or location."
                 )
-            return _build_result(leads, source_requested=source, source_used="apollo")
+            return _build_result(leads, source_requested=source, source_used="apollo", resources_used=["Apollo"])
 
         if not SENDER_EMAIL or not GMAIL_PASSWORD:
             raise LeadGenerationError(
@@ -169,7 +189,7 @@ def run_lead_gen(params: dict) -> dict:
             raise LeadGenerationError(
                 "LinkedIn browser search found profiles but not usable email addresses. Use Apollo or Web Search for email-ready leads."
             )
-        return _build_result(leads, source_requested=source, source_used="linkedin_selenium")
+        return _build_result(leads, source_requested=source, source_used="linkedin_selenium", resources_used=["LinkedIn browser search"])
 
     if source == "job_portal":
         leads = _email_ready_leads(scrape_job_portal(portal, query, location, max_r), max_r)
@@ -196,6 +216,7 @@ def run_lead_gen(params: dict) -> dict:
             source_requested=source,
             source_used=source_used,
             warning=warning,
+            resources_used=[PORTAL_LABELS.get(source_used, source_used)],
         )
 
     if source == "apollo":
@@ -208,7 +229,7 @@ def run_lead_gen(params: dict) -> dict:
             raise LeadGenerationError(
                 "Apollo did not return any email-ready matches. Try a broader title, industry, or location."
             )
-        return _build_result(leads, source_requested=source, source_used="apollo")
+        return _build_result(leads, source_requested=source, source_used="apollo", resources_used=["Apollo"])
 
     if source == "web_search":
         leads = _email_ready_leads(scrape_web_search(query, industry, location, max_r), max_r)
@@ -216,9 +237,259 @@ def run_lead_gen(params: dict) -> dict:
             raise LeadGenerationError(
                 "Web Search did not find any usable email-ready leads. Try a narrower niche, service, or location."
             )
-        return _build_result(leads, source_requested=source, source_used="web_search")
+        return _build_result(leads, source_requested=source, source_used="web_search", resources_used=["Open Web"])
 
     raise LeadGenerationError("This lead source is not available right now. Please choose another source.")
+
+
+def _combine_text(*parts: str) -> str:
+    return " ".join(part.strip() for part in parts if part and part.strip()).strip()
+
+
+def _lead_dedupe_key(lead: dict) -> str:
+    email = (lead.get("email") or "").strip().lower()
+    if email:
+        return f"email:{email}"
+
+    website = (lead.get("website") or "").strip().lower()
+    if website:
+        return f"web:{_base_domain(website)}"
+
+    company = (lead.get("company") or "").strip().lower()
+    title = (lead.get("title") or "").strip().lower()
+    return f"company:{company}|title:{title}"
+
+
+def _merge_lead_batches(batches: list[list[dict]], max_results: int) -> list[dict]:
+    merged: list[dict] = []
+    seen: set[str] = set()
+
+    for batch in batches:
+        for lead in batch:
+            dedupe_key = _lead_dedupe_key(lead)
+            if not dedupe_key or dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            merged.append(lead)
+            if len(merged) >= max_results:
+                return merged
+
+    return merged
+
+
+def _append_note(leads: list[dict], note: str) -> list[dict]:
+    for lead in leads:
+        existing = (lead.get("notes") or "").strip()
+        lead["notes"] = f"{existing} {note}".strip() if existing else note
+    return leads
+
+
+def _run_vertical_strategy(
+    vertical: str,
+    query: str,
+    location: str,
+    industry: str,
+    audience: str,
+    offer: str,
+    goal: str,
+    max_results: int,
+) -> dict:
+    if vertical in {"job_seeker", "recruiter"}:
+        return _career_intelligence(vertical, query, location, industry, audience, goal, max_results)
+    if vertical in {"agency", "business_growth"}:
+        return _market_intelligence(vertical, query, location, industry, audience, offer, goal, max_results)
+    return _partnership_intelligence(query, location, industry, audience, offer, goal, max_results)
+
+
+def _career_intelligence(
+    vertical: str,
+    query: str,
+    location: str,
+    industry: str,
+    audience: str,
+    goal: str,
+    max_results: int,
+) -> dict:
+    role_query = _combine_text(query, industry if vertical == "recruiter" else "")
+    if not role_query:
+        raise LeadGenerationError("Add the target role or hiring focus before generating leads.")
+
+    per_source = max(8, max_results // 3)
+    resources: list[str] = []
+    batches: list[list[dict]] = []
+
+    for portal in ("linkedin_jobs", "indeed", "naukri"):
+        leads = _email_ready_leads(scrape_job_portal(portal, role_query, location, per_source), per_source)
+        if leads:
+            note = (
+                "Hiring-company lead pulled from live recruitment signals."
+                if vertical == "job_seeker"
+                else "Hiring-company lead matched for recruiter outreach."
+            )
+            batches.append(_append_note(leads, note))
+            resources.append(PORTAL_LABELS.get(portal, portal))
+
+    web_query = (
+        _combine_text(role_query, "hiring companies", location, industry)
+        if vertical == "job_seeker"
+        else _combine_text("companies hiring", role_query, location, industry, audience, goal)
+    )
+    web_leads = _email_ready_leads(
+        scrape_web_search(
+            web_query,
+            industry or query,
+            location,
+            max_results=max(per_source, max_results // 2),
+            mode="career",
+            role_label="Hiring Team",
+            company_hint="Hiring Team",
+        ),
+        max(max_results // 2, per_source),
+    )
+    if web_leads:
+        batches.append(
+            _append_note(
+                web_leads,
+                "Open-web company discovery confirmed this team through public hiring or careers signals.",
+            )
+        )
+        resources.append("Open Web")
+
+    leads = _merge_lead_batches(batches, max_results)
+    if not leads:
+        raise LeadGenerationError(
+            "ReachFlow could not find email-ready hiring leads for that role yet. Broaden the title, try a nearby market, or add an industry hint."
+        )
+
+    return _build_result(
+        leads,
+        source_requested="auto",
+        source_used="vertical_intelligence",
+        resources_used=resources,
+    )
+
+
+def _market_intelligence(
+    vertical: str,
+    query: str,
+    location: str,
+    industry: str,
+    audience: str,
+    offer: str,
+    goal: str,
+    max_results: int,
+) -> dict:
+    market_query = _combine_text(query, audience, offer or goal)
+    if not market_query:
+        raise LeadGenerationError("Add the service, market, or buyer profile before generating leads.")
+
+    resources: list[str] = []
+    batches: list[list[dict]] = []
+
+    web_terms = [
+        _combine_text(market_query, industry, location),
+        _combine_text(industry or market_query, location, "company"),
+        _combine_text(market_query, location, "agency" if vertical == "agency" else "business"),
+    ]
+    for term in web_terms:
+        if not term:
+            continue
+        leads = _email_ready_leads(
+            scrape_web_search(term, industry or query, location, max_results=max(10, max_results // 2)),
+            max(max_results // 2, 10),
+        )
+        if leads:
+            note = (
+                "Matched to client-acquisition criteria for service-led outreach."
+                if vertical == "agency"
+                else "Matched to your growth-market criteria for outbound pipeline building."
+            )
+            batches.append(_append_note(leads, note))
+            if "Open Web" not in resources:
+                resources.append("Open Web")
+
+    if GOOGLE_MAPS_API_KEY and location:
+        maps_query = _combine_text(industry or query, audience or market_query)
+        maps_leads = _email_ready_leads(scrape_google_maps(maps_query, location, max(max_results // 2, 10)), max(max_results // 2, 10))
+        if maps_leads:
+            batches.append(
+                _append_note(
+                    maps_leads,
+                    "Local-market lead discovered from business listings and enriched with public contact routes.",
+                )
+            )
+            resources.append("Google Maps")
+
+    leads = _merge_lead_batches(batches, max_results)
+    if not leads:
+        raise LeadGenerationError(
+            "ReachFlow could not find email-ready commercial leads for that market yet. Refine the offer, niche, or location and try again."
+        )
+
+    return _build_result(
+        leads,
+        source_requested="auto",
+        source_used="vertical_intelligence",
+        resources_used=resources,
+    )
+
+
+def _partnership_intelligence(
+    query: str,
+    location: str,
+    industry: str,
+    audience: str,
+    offer: str,
+    goal: str,
+    max_results: int,
+) -> dict:
+    partner_thesis = _combine_text(query, audience, offer, goal)
+    if not partner_thesis:
+        raise LeadGenerationError("Add the partner type, thesis, or target segment before generating leads.")
+
+    resources = ["Open Web"]
+    batches: list[list[dict]] = []
+
+    for term in [
+        _combine_text(partner_thesis, industry, location),
+        _combine_text(partner_thesis, "partners", location),
+        _combine_text(partner_thesis, "integrations", location),
+        _combine_text(partner_thesis, "alliances", location),
+    ]:
+        if not term:
+            continue
+        leads = _email_ready_leads(
+            scrape_web_search(
+                term,
+                industry or query,
+                location,
+                max_results=max(12, max_results // 2),
+                mode="partnership",
+                role_label="Partnership Team",
+                company_hint="Partnership Team",
+            ),
+            max(max_results // 2, 12),
+        )
+        if leads:
+            batches.append(
+                _append_note(
+                    leads,
+                    "Strategic-partner lead identified from public company and channel signals.",
+                )
+            )
+
+    leads = _merge_lead_batches(batches, max_results)
+    if not leads:
+        raise LeadGenerationError(
+            "ReachFlow could not find email-ready partner accounts for that thesis yet. Try a clearer partner type, market, or category."
+        )
+
+    return _build_result(
+        leads,
+        source_requested="auto",
+        source_used="vertical_intelligence",
+        resources_used=resources,
+    )
 
 
 def _email_ready_leads(leads: list[dict], max_results: int) -> list[dict]:
@@ -240,7 +511,7 @@ def _enrich_lead(lead: dict, query: str, location: str) -> dict:
         return lead
 
     source = lead.get("source", "manual")
-    mode = _contact_mode(source)
+    mode = _contact_mode(source, lead)
     website = lead.get("website") or discover_official_website(company, query=query, location=location)
     if website:
         lead["website"] = website
@@ -259,12 +530,20 @@ def _enrich_lead(lead: dict, query: str, location: str) -> dict:
         lead["name"] = contact_name_from_email(lead["email"], mode=mode)
 
     if not lead.get("title"):
-        lead["title"] = "Hiring Team" if mode == "career" else "Business Development"
+        if mode == "career":
+            lead["title"] = "Hiring Team"
+        elif mode == "partnership":
+            lead["title"] = "Partnership Team"
+        else:
+            lead["title"] = "Business Development"
 
     return lead
 
 
-def _contact_mode(source: str) -> str:
+def _contact_mode(source: str, lead: dict | None = None) -> str:
+    explicit = ((lead or {}).get("contact_mode") or "").strip().lower()
+    if explicit in {"career", "business", "partnership"}:
+        return explicit
     return "career" if source in {"linkedin_jobs", "naukri", "indeed"} else "business"
 
 
@@ -539,7 +818,7 @@ def find_public_email(website: str, mode: str = "business") -> str:
 
 def _email_rank(email: str, domain: str, mode: str) -> int:
     local, _, email_domain = email.partition("@")
-    aliases = CAREER_ALIASES if mode == "career" else BUSINESS_ALIASES
+    aliases = CAREER_ALIASES if mode == "career" else PARTNERSHIP_ALIASES if mode == "partnership" else BUSINESS_ALIASES
     score = 0
 
     if domain and email_domain.endswith(domain):
@@ -563,7 +842,7 @@ def guess_role_email(website: str, mode: str = "business") -> str:
     if not domain:
         return ""
 
-    aliases = CAREER_ALIASES if mode == "career" else BUSINESS_ALIASES
+    aliases = CAREER_ALIASES if mode == "career" else PARTNERSHIP_ALIASES if mode == "partnership" else BUSINESS_ALIASES
     return f"{aliases[0]}@{domain}"
 
 
@@ -571,6 +850,8 @@ def contact_name_from_email(email: str, mode: str = "business") -> str:
     local = (email or "").split("@", 1)[0].lower()
     if any(alias in local for alias in CAREER_ALIASES):
         return "Hiring Team"
+    if any(alias in local for alias in PARTNERSHIP_ALIASES):
+        return "Partnership Team"
     if any(alias in local for alias in BUSINESS_ALIASES):
         return "Growth Team"
 
@@ -578,7 +859,11 @@ def contact_name_from_email(email: str, mode: str = "business") -> str:
     if tokens and all(token.isalpha() for token in tokens[:2]):
         return " ".join(token.capitalize() for token in tokens[:2])
 
-    return "Hiring Team" if mode == "career" else "Growth Team"
+    if mode == "career":
+        return "Hiring Team"
+    if mode == "partnership":
+        return "Partnership Team"
+    return "Growth Team"
 
 
 def scrape_google_maps(query: str, location: str, max_results: int = 50) -> list:
@@ -874,7 +1159,15 @@ def _scrape_linkedin_jobs(query: str, location: str, max_results: int) -> list:
     return leads
 
 
-def scrape_web_search(query: str, industry: str = "", location: str = "", max_results: int = 50) -> list:
+def scrape_web_search(
+    query: str,
+    industry: str = "",
+    location: str = "",
+    max_results: int = 50,
+    mode: str = "business",
+    role_label: str = "Business Development",
+    company_hint: str = "",
+) -> list:
     leads = []
     seen_domains: set[str] = set()
     search_terms = [
@@ -908,11 +1201,13 @@ def scrape_web_search(query: str, industry: str = "", location: str = "", max_re
                         "name": "",
                         "email": "",
                         "company": company,
-                        "title": "Business Development",
+                        "title": role_label,
                         "phone": "",
                         "website": website,
                         "location": location,
                         "industry": industry or query,
+                        "contact_mode": mode,
+                        "name_hint": company_hint,
                         "source": "web_search",
                     }
                 )
