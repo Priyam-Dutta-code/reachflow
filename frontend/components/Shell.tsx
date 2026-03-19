@@ -81,7 +81,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1600px] gap-4 px-4 py-4 md:px-6 md:py-6">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1600px] gap-3 px-3 py-3 md:gap-4 md:px-6 md:py-6">
         <AnimatePresence>
           {menuOpen && (
             <motion.button
@@ -96,7 +96,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
 
         <motion.aside
-          className={`shell-card fixed inset-y-4 left-4 z-40 flex w-[280px] flex-col overflow-hidden p-4 md:sticky md:top-6 md:z-10 md:h-[calc(100vh-3rem)] md:translate-x-0 ${
+          className={`shell-card fixed inset-y-3 left-3 z-40 flex w-[min(86vw,280px)] flex-col overflow-hidden p-4 md:sticky md:top-6 md:z-10 md:h-[calc(100vh-3rem)] md:w-[280px] md:translate-x-0 ${
             menuOpen ? "translate-x-0" : "-translate-x-[120%]"
           } transition-transform duration-300`}
           initial={false}
@@ -186,13 +186,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </motion.aside>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="shell-card flex items-center justify-between gap-3 px-4 py-3 md:px-5">
-            <div className="flex min-w-0 items-center gap-3">
-              <Link href="/" className="flex items-center gap-3 md:hidden">
+          <div className="shell-card flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:flex-nowrap md:px-5">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <Link href="/" className="flex min-w-0 items-center gap-3 md:hidden">
                 <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[linear-gradient(135deg,#8bf3d8,#48e1ff)] font-bold text-slate-950">
                   R
                 </div>
-                <div className="font-display text-lg font-semibold">ReachFlow</div>
+                <div className="min-w-0">
+                  <div className="truncate font-display text-lg font-semibold">ReachFlow</div>
+                  <div className="truncate text-[10px] uppercase tracking-[0.24em] text-white/40">{currentSection}</div>
+                </div>
               </Link>
 
               <div className="hidden min-w-0 md:block">
@@ -203,7 +206,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div className="hidden max-w-[260px] items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/65 lg:flex">
                 <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-white/45">
                   {vertical.tag}
@@ -213,12 +216,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               </div>
 
               <button
-                className="secondary-button !justify-center !px-4 !py-2.5"
+                className="secondary-button !justify-center !px-3 !py-2.5 sm:!px-4"
                 onClick={handleLogout}
                 type="button"
               >
                 <LogOut className="h-4 w-4" />
-                <span>Sign out</span>
+                <span className="hidden sm:inline">Sign out</span>
               </button>
 
               <button
@@ -231,7 +234,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <main className="shell-card relative min-h-[calc(100vh-2rem)] flex-1 overflow-hidden p-4 md:p-6 lg:p-8">
+          <main className="shell-card relative min-h-[calc(100vh-7rem)] flex-1 overflow-hidden p-4 md:min-h-[calc(100vh-2rem)] md:p-6 lg:p-8">
             <div className="absolute inset-x-6 top-0 h-px ambient-line opacity-60" />
             <div className="relative">{children}</div>
           </main>
