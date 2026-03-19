@@ -278,7 +278,7 @@ def _fallback_email(lead, user, mode: str) -> tuple[str, str]:
     body = (
         f"Dear {contact},\n\n"
         f"I came across {company} while reviewing teams in this space and thought there may be a relevant fit with the work I do in {sender_role.lower()}.\n\n"
-        f"My focus is on practical execution rather than generic outreach, and I would be happy to send a short idea tailored to {company}'s current priorities if that would be useful.\n\n"
+        f"My focus is on practical execution rather than generic outreach, and I would be happy to send a short idea tailored to the current priorities at {company} if that would be useful.\n\n"
         f"Would it make sense for me to send a concise note with the angle I have in mind?\n\n"
         f"{signature}"
     )
@@ -300,7 +300,7 @@ def _fallback_followup(lead, user, mode: str) -> tuple[str, str]:
 
     body = (
         f"Dear {contact},\n\n"
-        f"Following up on my earlier note in case the timing is better now. If helpful, I can send a concise idea tailored to {company}'s current priorities.\n\n"
+        f"Following up on my earlier note in case the timing is better now. If helpful, I can send a concise idea tailored to the current priorities at {company}.\n\n"
         f"{signature}"
     )
     return f"Following up with {company}", body
