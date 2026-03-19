@@ -164,6 +164,238 @@ const PROCESS = [
   },
 ];
 
+function MobileVerticalCards({
+  activeVertical,
+  onChange,
+}: {
+  activeVertical: VerticalId;
+  onChange: (vertical: VerticalId) => void;
+}) {
+  return (
+    <div className="space-y-3 lg:hidden">
+      {VERTICAL_LIST.map((item) => {
+        const active = item.id === activeVertical;
+        const Icon = ICONS[item.id];
+        const showcase = SHOWCASE[item.id];
+
+        return (
+          <motion.div
+            key={item.id}
+            className={`overflow-hidden rounded-[26px] border transition ${
+              active ? "border-white/14 bg-white/[0.07]" : "border-white/10 bg-white/[0.03]"
+            }`}
+            layout
+          >
+            <button
+              className="w-full px-4 py-4 text-left"
+              onClick={() => onChange(item.id)}
+              type="button"
+            >
+              <div className="flex items-start gap-3">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-[var(--accent)]">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/40">{item.tag}</div>
+                      <div className="mt-2 font-display text-[1.9rem] font-semibold tracking-[-0.045em] text-white">
+                        {item.label}
+                      </div>
+                    </div>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${
+                        active ? "border-white/14 bg-white/[0.06] text-white/72" : "border-white/10 text-white/40"
+                      }`}
+                    >
+                      {active ? "Selected" : "Preview"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-white/58">{item.audience}</p>
+                </div>
+              </div>
+            </button>
+
+            <AnimatePresence initial={false}>
+              {active && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <div className="border-t border-white/8 px-4 pb-4 pt-4">
+                    <p className="text-sm leading-7 text-white/68">{showcase.summary}</p>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {item.landingBullets.map((bullet) => (
+                        <span
+                          key={bullet}
+                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/60"
+                        >
+                          {bullet}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      {showcase.steps.map((step) => (
+                        <div key={step} className="flex items-start gap-3 rounded-[18px] bg-white/[0.03] px-4 py-3">
+                          <Check className="mt-1 h-4 w-4 shrink-0 text-[var(--accent-strong)]" />
+                          <div className="text-sm leading-6 text-white/72">{step}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                      <Link href={`/signup?vertical=${item.id}`} className="primary-button w-full !justify-center !px-5 !py-2.5">
+                        Start {item.label}
+                      </Link>
+                      <Link href={`/pricing?vertical=${item.id}`} className="secondary-button w-full !justify-center !px-5 !py-2.5">
+                        Pricing
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DesktopWorkflowShowcase({
+  activeVertical,
+  onChange,
+}: {
+  activeVertical: VerticalId;
+  onChange: (vertical: VerticalId) => void;
+}) {
+  const vertical = getVerticalConfig(activeVertical);
+  const showcase = SHOWCASE[activeVertical];
+
+  return (
+    <div className="hidden lg:block">
+      <div className="glass-card overflow-hidden p-6 xl:p-7">
+        <div className="overflow-x-auto pb-1">
+          <div className="flex min-w-max gap-2">
+            {VERTICAL_LIST.map((item) => {
+              const active = item.id === activeVertical;
+              const Icon = ICONS[item.id];
+
+              return (
+                <button
+                  key={item.id}
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm transition ${
+                    active
+                      ? "border-white/16 bg-white/[0.08] text-white"
+                      : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.05]"
+                  }`}
+                  onClick={() => onChange(item.id)}
+                  onFocus={() => onChange(item.id)}
+                  onMouseEnter={() => onChange(item.id)}
+                  type="button"
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeVertical}
+            className="mt-6"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="grid gap-5 xl:grid-cols-[0.96fr_1.04fr]">
+              <div className="rounded-[28px] border border-white/10 bg-[rgba(255,255,255,0.03)] p-6">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-white/42">{vertical.tag}</div>
+                <h2 className="mt-4 max-w-xl font-display text-4xl font-semibold tracking-[-0.05em] text-white">
+                  {showcase.title}
+                </h2>
+                <p className="mt-4 text-sm leading-7 text-white/67">{showcase.summary}</p>
+
+                <div className="mt-6 space-y-3">
+                  {showcase.steps.map((step, index) => (
+                    <div key={step} className="flex items-start gap-3 rounded-[20px] bg-white/[0.03] px-4 py-4">
+                      <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 text-[11px] text-white/60">
+                        0{index + 1}
+                      </div>
+                      <div className="text-sm leading-7 text-white/72">{step}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-white/42">{showcase.outputLabel}</div>
+                      <div className="mt-3 font-display text-2xl font-semibold tracking-[-0.045em] text-white">
+                        {showcase.contactName}
+                      </div>
+                      <div className="mt-1 text-sm text-white/55">
+                        {showcase.contactRole} - {showcase.company}
+                      </div>
+                    </div>
+                    <Mail className="h-5 w-5 text-[var(--accent-strong)]" />
+                  </div>
+                  <div className="mt-5 rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/72">
+                    {showcase.email}
+                  </div>
+                  <div className="mt-5 text-[11px] uppercase tracking-[0.22em] text-white/42">Draft subject line</div>
+                  <div className="mt-3 text-sm leading-7 text-white/78">{showcase.subject}</div>
+                </div>
+
+                <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {showcase.stats.map((item) => (
+                      <div key={item.label} className="rounded-[20px] border border-white/10 bg-white/[0.03] px-4 py-4">
+                        <div className="text-[11px] uppercase tracking-[0.22em] text-white/42">{item.label}</div>
+                        <div className="mt-2 text-sm leading-7 text-white/76">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {vertical.landingBullets.map((bullet) => (
+                      <span
+                        key={bullet}
+                        className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-white/62"
+                      >
+                        {bullet}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 flex gap-3">
+                    <Link href={`/signup?vertical=${activeVertical}`} className="primary-button">
+                      Start {vertical.label}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link href={`/pricing?vertical=${activeVertical}`} className="secondary-button">
+                      Pricing
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const [activeVertical, setActiveVertical] = useState<VerticalId>(DEFAULT_VERTICAL);
 
@@ -199,15 +431,15 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section className="section-wrap pb-10 pt-8 md:pt-10 lg:pt-12">
-        <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
+      <section className="section-wrap pb-8 pt-8 md:pt-10 lg:pb-10 lg:pt-12">
+        <div className="grid gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
           <Reveal>
             <div className="max-w-3xl">
               <div className="section-label">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Built for focused lead generation and outbound
               </div>
-              <h1 className="mt-6 font-display text-5xl font-semibold tracking-[-0.065em] text-white md:text-6xl lg:text-[5.2rem]">
+              <h1 className="mt-6 font-display text-[3.15rem] font-semibold leading-[0.96] tracking-[-0.065em] text-white md:text-6xl lg:text-[5.2rem]">
                 One clean system
                 <br />
                 for every outreach motion.
@@ -238,7 +470,7 @@ export default function LandingPage() {
           </Reveal>
 
           <Reveal delay={0.08}>
-            <div className="relative">
+            <div className="relative hidden lg:block">
               <motion.div
                 aria-hidden="true"
                 className={`absolute -right-16 top-2 h-44 w-44 rounded-full bg-gradient-to-br ${showcase.accent} blur-3xl`}
@@ -340,7 +572,7 @@ export default function LandingPage() {
                                 {showcase.contactName}
                               </div>
                               <div className="mt-1 text-sm text-white/55">
-                                {showcase.contactRole} · {showcase.company}
+                                {showcase.contactRole} - {showcase.company}
                               </div>
                             </div>
                             <Mail className="h-5 w-5 text-[var(--accent-strong)]" />
@@ -372,7 +604,26 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="section-wrap pt-4">
+      <section className="section-wrap pt-0 lg:pt-4">
+        <Reveal>
+          <div className="max-w-2xl">
+            <div className="section-label">Choose a workflow</div>
+            <h2 className="mt-5 font-display text-4xl font-semibold tracking-[-0.05em] md:text-5xl">
+              Better on touch, cleaner on desktop.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-white/66 md:text-base">
+              On phone, each vertical opens as its own focused card. On desktop, the preview shifts live as you explore.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="mt-8">
+          <MobileVerticalCards activeVertical={activeVertical} onChange={setActiveVertical} />
+          <DesktopWorkflowShowcase activeVertical={activeVertical} onChange={setActiveVertical} />
+        </div>
+      </section>
+
+      <section className="section-wrap pt-6">
         <div className="grid gap-5 lg:grid-cols-3">
           {BENEFITS.map((item, index) => (
             <Reveal key={item.title} delay={index * 0.06}>
