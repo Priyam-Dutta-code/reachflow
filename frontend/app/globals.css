@@ -2,7 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ReachFlow design tokens.
+ *
+ * NEW light / warm-neutral system (--paper, --ink, --ember, ...) drives the
+ * redesigned pages. The legacy dark tokens + classes below are kept so any page
+ * not yet converted keeps rendering correctly (they are scoped under .app-shell).
+ */
 :root {
+  /* ── Light / warm-neutral system (source of truth for the redesign) ── */
+  --paper: #f7f5f2;
+  --card: #ffffff;
+  --card-2: #f3f0ea;
+  --line: #e9e4dd;
+  --line-strong: #d8d1c7;
+  --ink: #1c1917;
+  --ink-muted: #57534e;
+  --ink-faint: #8c857b;
+  --ember: #c2410c;
+  --ember-hover: #9a3412;
+  --ember-weak: #fff4ec;
+  --ember-weak-border: #f7dbc4;
+  --ember-ink: #9a3412;
+  --ok: #15803d;
+  --ok-weak: #ecfdf3;
+  --ok-weak-border: #bbf7d0;
+  --bad: #b91c1c;
+  --bad-weak: #fef2f2;
+  --bad-weak-border: #fecaca;
+  --r-card: 16px;
+  --r-control: 10px;
+
+  /* ── Legacy dark tokens (kept for not-yet-redesigned pages) ── */
   --bg: #0d1119;
   --bg-deep: #111726;
   --surface: rgba(20, 27, 40, 0.92);
@@ -31,31 +62,17 @@
   body {
     margin: 0;
     min-height: 100vh;
-    background:
-      radial-gradient(circle at 14% 10%, rgba(141, 179, 255, 0.08), transparent 30%),
-      radial-gradient(circle at 86% 12%, rgba(242, 163, 107, 0.08), transparent 24%),
-      radial-gradient(circle at 52% 82%, rgba(118, 210, 195, 0.08), transparent 34%),
-      linear-gradient(180deg, #0d1119 0%, #111726 100%);
-    color: var(--text);
-    font-family: var(--font-body), sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background:
-      repeating-linear-gradient(
-        120deg,
-        rgba(255, 255, 255, 0.01) 0,
-        rgba(255, 255, 255, 0.01) 1px,
-        transparent 1px,
-        transparent 54px
-      );
-    opacity: 0.16;
-    pointer-events: none;
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   a {
@@ -70,14 +87,138 @@
   }
 
   ::selection {
-    background: rgba(118, 210, 195, 0.3);
-    color: white;
+    background: rgba(194, 65, 12, 0.16);
+    color: var(--ink);
   }
 }
 
+/* ───────────────────────── New light component layer ───────────────────────── */
+@layer components {
+  .container-px {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-faint;
+  }
+
+  .card {
+    @apply rounded-card border border-line bg-card shadow-card;
+  }
+
+  .divider {
+    @apply border-t border-line;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-control text-sm font-semibold transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px rgba(194, 65, 12, 0.45);
+  }
+  .btn--primary {
+    @apply bg-ember text-white hover:bg-ember-hover;
+  }
+  .btn--secondary {
+    @apply border border-line-strong bg-card text-ink hover:bg-card-muted;
+  }
+  .btn--ghost {
+    @apply text-ink-muted hover:bg-card-muted hover:text-ink;
+  }
+  .btn--danger {
+    @apply border border-bad-weak-border bg-bad-weak text-bad hover:bg-[#fde4e4];
+  }
+  .btn--sm {
+    @apply h-9 px-3.5 text-[13px];
+  }
+  .btn--md {
+    @apply h-11 px-5;
+  }
+  .btn--lg {
+    @apply h-12 px-6 text-[15px];
+  }
+
+  /* Form controls */
+  .label {
+    @apply mb-1.5 block text-xs font-medium text-ink-muted;
+  }
+  .input,
+  .textarea {
+    @apply w-full rounded-control border border-line bg-card text-sm text-ink transition placeholder:text-ink-faint;
+  }
+  .input {
+    @apply h-11 px-3.5;
+  }
+  .textarea {
+    @apply px-3.5 py-3;
+  }
+  .input:focus,
+  .textarea:focus {
+    outline: none;
+    border-color: var(--ember);
+    box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.14);
+  }
+  .field-hint {
+    @apply mt-1.5 text-xs text-ink-faint;
+  }
+  .field-error {
+    @apply mt-1.5 text-xs font-medium text-bad;
+  }
+
+  /* Badges / status pills */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge--neutral {
+    @apply border-line bg-card-muted text-ink-muted;
+  }
+  .badge--accent {
+    @apply border-ember-weak-border bg-ember-weak text-ember-ink;
+  }
+  .badge--ok {
+    @apply border-ok-weak-border bg-ok-weak text-ok;
+  }
+  .badge--bad {
+    @apply border-bad-weak-border bg-bad-weak text-bad;
+  }
+
+  /* Inline notices */
+  .notice {
+    @apply rounded-card border px-4 py-3 text-sm leading-6;
+  }
+  .notice--ok {
+    @apply border-ok-weak-border bg-ok-weak text-ok;
+  }
+  .notice--bad {
+    @apply border-bad-weak-border bg-bad-weak text-bad;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display), Georgia, serif;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ───────────────────────── Legacy dark layer (scoped to .app-shell) ─────────────────────────
+ * Used only by pages not yet migrated to the light system. Remove once every page is converted. */
 @layer components {
   .app-shell {
     @apply relative min-h-screen overflow-hidden;
+    background: linear-gradient(180deg, #0d1119 0%, #111726 100%);
+    color: var(--text);
   }
 
   .app-shell::before {
@@ -101,8 +242,7 @@
 
   .glass-card {
     @apply rounded-[28px] border border-white/10;
-    background:
-      linear-gradient(180deg, rgba(23, 31, 46, 0.95), rgba(17, 24, 36, 0.94));
+    background: linear-gradient(180deg, rgba(23, 31, 46, 0.95), rgba(17, 24, 36, 0.94));
     box-shadow:
       0 24px 60px rgba(0, 0, 0, 0.24),
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -202,18 +342,9 @@
 }
 
 @layer utilities {
-  .font-display {
-    font-family: var(--font-display), serif;
-  }
-
-  .text-balance {
-    text-wrap: balance;
-  }
-
   .glow-border {
     position: relative;
   }
-
   .glow-border::before {
     content: "";
     position: absolute;
@@ -224,11 +355,9 @@
     transition: opacity 0.35s ease;
     z-index: -1;
   }
-
   .glow-border:hover::before {
     opacity: 1;
   }
-
   .ambient-line {
     background: linear-gradient(90deg, rgba(118, 210, 195, 0), rgba(118, 210, 195, 0.66), rgba(242, 163, 107, 0));
   }
@@ -238,12 +367,10 @@
   width: 10px;
   height: 10px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--line-strong);
   border-radius: 999px;
 }

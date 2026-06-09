@@ -40,21 +40,30 @@ You are working on an existing, deployed, multi-tenant AI SaaS. **Do not scaffol
 - **Multi-tenant safety.** Every data query must remain scoped to the authenticated `user_id`. Never introduce an endpoint or query that could leak another tenant's leads/campaigns/emails.
 - **Cold-email legality is a feature, not optional.** Anything that sends mail must respect unsubscribe + sender identity + rate limits (see Phase 11). This protects Priyam and real users.
 - **Incremental & reversible.** Prefer additive changes. When deleting/replacing significant code, explain why first.
-- **Match the existing aesthetic; elevate it.** The current dark, glassy, premium look (Fraunces display + Plus Jakarta Sans, teal/orange/blue accents) is good. Refine and systematise it — don't throw it away for a generic template.
+- **Aesthetic direction (updated by Priyam, supersedes the original dark look).** The frontend is being **fully redesigned** to be **light, minimal, clean, and editorial** with **warm-neutral (stone) surfaces and a single amber/orange accent**. Keep Fraunces (display serif) + Plus Jakarta Sans (body). Drop the dark glass/glow/gradient-noise maximalism. Every page must be flawless on **both phone and desktop**. Preserve all functional wiring (auth, proxy, `apiFetch`, the 5-vertical system, routing) — this is a visual overhaul, not a functional rewrite.
 
 ---
 
-## 2. DESIGN NORTH STAR (the visual target)
+## 2. DESIGN NORTH STAR (the visual target) — REDESIGN (light / warm / minimal)
 
-The product should feel like a **focused, premium outbound workspace** — closer to Linear / Vercel / Attio in polish than a bootstrap dashboard. Build on what exists:
+**Decision (confirmed with Priyam):** ship a **light, minimal, clean, editorial** theme — **warm-neutral (stone) surfaces with a single amber/orange accent.** This replaces the previous dark/glassy north star. The product should feel like a focused, premium outbound workspace — Linear / Notion / Vercel-light in restraint.
 
-- **Mood:** calm, dark, high-contrast, spacious. Confident but not flashy. Motion is subtle and purposeful (you already use Framer Motion well via `Reveal`).
-- **Type:** keep Fraunces (display) + Plus Jakarta Sans (body). Lock a real type scale (display / h1 / h2 / h3 / body / small / caption) and use it consistently. Tighten letter-spacing on big display only.
-- **Colour:** keep the dark base + the teal (`--accent`), warm amber (`--accent-strong`), and periwinkle (`--accent-ink`). Use accents *sparingly* as highlights, not fills. One primary action colour per screen.
-- **Surfaces:** standardise on the existing `glass-card` / `shell-card` language — consistent radius, border, blur, shadow. Don't introduce five new card styles.
-- **Density:** marketing = generous whitespace; app = information-dense but breathable. Tables and lists should be scannable.
-- **Consistency over novelty:** every button, input, badge, modal, toast, empty state should look like it came from the same system. This single thing is what makes it read as "highly professional."
-- **Decision to confirm with Priyam:** ship **dark-only** (simpler, already strong) **or** add a polished **light mode** too? Default to dark-only unless he wants light mode.
+- **Mood:** light, airy, high-contrast on white/warm-paper. Generous whitespace, thin hairline borders, subtle shadows (no blur, no glow, no gradient mesh). Calm and confident, never busy.
+- **Type:** keep **Fraunces** (display serif — carries the editorial warmth) + **Plus Jakarta Sans** (body). Lock one type scale (display / h1 / h2 / h3 / body / body-sm / caption) and use it everywhere.
+- **Colour:** warm-neutral **stone** scale for surfaces/text/borders; **one amber/orange accent** for the single primary action + active state per screen. Success/danger used only for status. No multi-accent gradients.
+- **Surfaces:** one card language (`.card`) — white surface, hairline border, soft shadow, consistent radius. Don't introduce five card styles.
+- **Responsive (hard requirement):** every page verified on phone **and** desktop. Tables collapse to cards on mobile; tap targets ≥ 44px; no horizontal overflow.
+- **Consistency over novelty:** every button, input, badge, card, empty state comes from the same token system + shared component library.
+
+### Frontend redesign execution order (folded into the plan)
+
+The redesign is delivered in coherent, build-green checkpoints. The **new light system is added alongside the old dark classes** so unconverted pages keep working (dark) until each is converted — no broken intermediate state.
+
+- **R1 — Design foundation + core components + landing.** New light/warm tokens in `globals.css`, wired into `tailwind.config.js`; type scale; shared `components/ui/*` primitives; redesigned **landing** page as the proof. *(this checkpoint)*
+- **R2 — Public surface.** Redesign **pricing, login, signup**, marketing nav + footer, and legal stub pages.
+- **R3 — App shell + dashboard.** Redesign `components/Shell.tsx` and the dashboard to the light system.
+- **R4 — App pages.** Redesign **leads, campaigns, analytics, settings**; remove the now-unused dark classes.
+- Functional fixes from Phase 1 (e.g. campaign `emails_per_day` default vs plan cap, loading/empty states) are folded into each page as it is rebuilt.
 
 ---
 
