@@ -26,3 +26,8 @@ jobs:
 
       - name: Web stub syntax
         run: node --check apps/web/server.mjs
+
+      - name: Shell scripts
+        run: |
+          bash -n infra/*.sh
+          shellcheck -S warning infra/*.sh

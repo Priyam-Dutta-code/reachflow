@@ -2,16 +2,13 @@
 
 Server and edge tooling for the sovereign stack (master plan Part II).
 
-Lands here in Phase 1:
+| File | Purpose |
+|---|---|
+| `server-setup.sh` | Idempotent VM hardening + Docker install (run once as root; see `docs/SETUP_ORACLE.md` §4) |
+| `deploy.sh` | `git pull → build → migrate → up -d → health-verify`, plus `rollback` (see `docs/RUNBOOK.md`) |
+| `oracle-retry.sh` | Retries A1.Flex creation across availability domains when Oracle is out of capacity |
 
-- `server-setup.sh` — idempotent Oracle VM hardening (non-root sudo user, SSH
-  key-only, ufw allow 22 only, fail2ban, unattended-upgrades, Docker Engine +
-  compose plugin, log rotation, timezone).
-- `deploy.sh` — `git pull → build → migrate → up -d → health-verify`, with rollback.
-- `oracle-retry.sh` — periodic retry for "Out of capacity" instance creation.
-- cloudflared ingress notes + the Caddy fallback config for non-Cloudflare hosts.
+Related docs: `docs/SETUP_ORACLE.md`, `docs/SETUP_CLOUDFLARE.md`,
+`docs/CADDY_FALLBACK.md` (non-Cloudflare portability), `docs/RUNBOOK.md`.
 
-Lands here in Phase 11:
-
-- `backup-now.sh`, `restore.sh` (nightly pg_dump + offsite rclone, tested restore).
-- disk/RAM threshold alert cron script.
+Lands here in Phase 11: `backup-now.sh`, `restore.sh`, disk/RAM alert cron.
