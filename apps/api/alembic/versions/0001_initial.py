@@ -18,15 +18,22 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def upgrade() -> None:
+# Tables owned by THIS revision — later models must not leak in here.
+_TABLES = ("users", "campaigns", "leads", "email_logs", "payments")
+
+
+def _tables():
     from app.db.base import Base
     import app.db.models  # noqa: F401
 
-    Base.metadata.create_all(bind=op.get_bind())
+    return Base.metadata, [Base.metadata.tables[name] for name in _TABLES]
+
+
+def upgrade() -> None:
+    metadata, tables = _tables()
+    metadata.create_all(bind=op.get_bind(), tables=tables)
 
 
 def downgrade() -> None:
-    from app.db.base import Base
-    import app.db.models  # noqa: F401
-
-    Base.metadata.drop_all(bind=op.get_bind())
+    metadata, tables = _tables()
+    metadata.drop_all(bind=op.get_bind(), tables=tables)

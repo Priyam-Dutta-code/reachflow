@@ -8,4 +8,6 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
-ignore = ["E501", "UP017"]
+# E501 long lines (handled by judgment), B008 FastAPI Depends-in-default idiom,
+# UP017 datetime.UTC (py3.11+ only)
+ignore = ["E501", "B008", "UP017"]

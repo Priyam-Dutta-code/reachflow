@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
 
-from app.api.routers import internal, system
+from app.api.routers import auth, internal, system
 from app.core.logging import Stopwatch, request_id_var, setup_logging
 from app.core.security import get_secret_manager
 from app.core.settings import get_settings
@@ -92,6 +92,7 @@ def create_app() -> FastAPI:
 
     app.include_router(system.router, tags=["System"])
     app.include_router(internal.router, prefix="/internal", tags=["Internal"])
+    app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 
     return app
 
