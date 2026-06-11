@@ -39,3 +39,19 @@ jobs:
         run: |
           bash -n infra/*.sh
           shellcheck -S warning infra/*.sh
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install + typecheck + build
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build

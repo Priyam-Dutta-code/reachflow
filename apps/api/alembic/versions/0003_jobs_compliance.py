@@ -49,6 +49,8 @@ def upgrade() -> None:
     op.create_index("ix_unsubscribes_user_id", "unsubscribes", ["user_id"])
     op.create_index("ix_unsubscribes_email", "unsubscribes", ["email"])
 
+    # if_not_exists: revision 0001 builds tables from live model metadata, so
+    # this index may already exist on fresh databases (model __table_args__).
     op.create_index(
         "uq_email_logs_send_once",
         "email_logs",
@@ -56,6 +58,7 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("status = 'sent'"),
         sqlite_where=sa.text("status = 'sent'"),
+        if_not_exists=True,
     )
 
 
