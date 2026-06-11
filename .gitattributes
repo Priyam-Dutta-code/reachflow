@@ -1,0 +1,7 @@
+# Scripts and configs that run on Linux must stay LF even on Windows checkouts
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.mjs text eol=lf
+Caddyfile text eol=lf
