@@ -43,14 +43,41 @@ services:
     build:
       context: ./apps/api
     restart: unless-stopped
-    environment:
+    environment: &api_env
+      APP_ENV: development
       DATABASE_URL: postgresql://reachflow:${POSTGRES_PASSWORD:-reachflow_dev}@db:5432/reachflow
       REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_do_not_use_in_prod}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-dev_encryption_key_do_not_use_in_prod}
+      CRON_SECRET: ${CRON_SECRET:-dev_cron_secret}
+      ENABLE_BACKGROUND_WORKER: "true"
     ports:
       - "8000:8000" # dev convenience; prod keeps the api internal-only
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    environment: *api_env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment: *api_env
+    depends_on:
       redis:
         condition: service_healthy
 

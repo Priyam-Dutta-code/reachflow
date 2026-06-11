@@ -19,10 +19,18 @@ jobs:
           # prod skeleton needs required env vars to interpolate
           POSTGRES_PASSWORD=x CLOUDFLARE_TUNNEL_TOKEN=x docker compose -f compose.prod.yml config -q
 
-      - name: API stub imports
+      - name: API lint + tests
+        working-directory: apps/api
         run: |
-          python3 -m pip install --quiet -r apps/api/requirements.txt
-          python3 -c "from apps.api.app.main import app; print('api stub ok')"
+          python3 -m pip install --quiet -r requirements-dev.txt
+          python3 -m ruff check app tests
+          python3 -m pytest
+
+      - name: API migration applies
+        working-directory: apps/api
+        env:
+          DATABASE_URL: sqlite:///./ci_migrate.db
+        run: python3 -m alembic upgrade head
 
       - name: Web stub syntax
         run: node --check apps/web/server.mjs

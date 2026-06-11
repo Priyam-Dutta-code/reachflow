@@ -1,6 +1,13 @@
-# Phase 0 stub dependencies. Phase 2 replaces this with the full pinned set
-# (sqlalchemy, alembic, pydantic-settings, celery, argon2-cffi, slowapi, ...).
+# ReachFlow V2 API — Phase 2 pinned dependencies.
+# Phase 3 adds: argon2-cffi, PyJWT. Phase 4 adds: groq, beautifulsoup4, requests, googlemaps.
 fastapi==0.115.12
 uvicorn[standard]==0.34.2
+sqlalchemy==2.0.41
 psycopg[binary]==3.2.6
+alembic==1.16.1
+pydantic==2.11.5
+pydantic-settings==2.9.1
 redis==5.2.1
+celery==5.5.2
+cryptography==45.0.3
+httpx==0.28.1
