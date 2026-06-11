@@ -8,7 +8,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
 
-from app.api.routers import auth, internal, system
+from app.api.routers import (
+    analytics,
+    auth,
+    campaigns,
+    emails,
+    internal,
+    leads,
+    payments,
+    system,
+    unsubscribe,
+)
 from app.core.logging import Stopwatch, request_id_var, setup_logging
 from app.core.security import get_secret_manager
 from app.core.settings import get_settings
@@ -93,6 +103,12 @@ def create_app() -> FastAPI:
     app.include_router(system.router, tags=["System"])
     app.include_router(internal.router, prefix="/internal", tags=["Internal"])
     app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+    app.include_router(leads.router, prefix="/api/leads", tags=["Leads"])
+    app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
+    app.include_router(emails.router, prefix="/api/emails", tags=["Emails"])
+    app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+    app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
+    app.include_router(unsubscribe.router, prefix="/api", tags=["Compliance"])
 
     return app
 

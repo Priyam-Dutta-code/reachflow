@@ -1,5 +1,4 @@
-# ReachFlow V2 API — pinned dependencies (Phases 2–3).
-# Phase 4 adds: groq, beautifulsoup4, requests, googlemaps.
+# ReachFlow V2 API — pinned dependencies (Phases 2–4).
 fastapi==0.115.12
 uvicorn[standard]==0.34.2
 sqlalchemy==2.0.41
@@ -14,3 +13,9 @@ cryptography==45.0.3
 httpx==0.28.1
 argon2-cffi==23.1.0
 PyJWT==2.10.1
+requests==2.32.3
+beautifulsoup4==4.13.4
+lxml==5.4.0
+groq==0.25.0
+# selenium is intentionally NOT here — the flag-gated LinkedIn source needs a
+# separate image layer with distro chromium (see Dockerfile notes, Phase 4).

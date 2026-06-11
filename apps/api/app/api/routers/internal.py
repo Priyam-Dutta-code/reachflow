@@ -28,6 +28,8 @@ def _verify(secret_header: str | None) -> None:
 @router.post("/cron/tick")
 def cron_tick(x_cron_secret: str | None = Header(default=None)):
     _verify(x_cron_secret)
-    # Phase 4: process due sends / follow-ups / generation jobs in bounded batches.
+    from app.services.jobs import process_due_work
+
+    summary = process_due_work()
     logger.info("cron tick", extra={"event": "cron_tick"})
-    return {"processed": 0, "note": "tick scaffold — work added in Phase 4"}
+    return {"processed": sum(summary.values()), **summary}

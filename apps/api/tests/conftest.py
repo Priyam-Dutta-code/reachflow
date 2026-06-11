@@ -11,6 +11,7 @@ os.environ.setdefault("REDIS_URL", "")
 os.environ.setdefault("JWT_SECRET", "test_jwt_secret")
 os.environ.setdefault("APP_ENCRYPTION_KEY", "test_encryption_key")
 os.environ.setdefault("CRON_SECRET", "test_cron_secret")
+os.environ.setdefault("CASHFREE_WEBHOOK_SECRET", "test_webhook_secret")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -92,3 +93,30 @@ def register_user(client, email="user@example.com", password="correct-horse-9", 
     })
     assert response.status_code == 201, response.text
     return response
+
+
+def make_verified_user(db, email="sender@example.com", vertical="business_growth", **overrides):
+    """Direct-DB user factory for service-level tests (verified, with creds)."""
+    from datetime import datetime
+
+    from app.core.security import get_secret_manager
+    from app.db.models import User
+
+    user = User(
+        email=email,
+        name="Sender",
+        vertical=vertical,
+        email_verified_at=datetime.utcnow(),
+        sender_name="Sender Name",
+        sender_email=email,
+        gmail_password=get_secret_manager().encrypt("app-password"),
+        credits=100,
+        leads_quota=100,
+        leads_used=0,
+    )
+    for key, value in overrides.items():
+        setattr(user, key, value)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
