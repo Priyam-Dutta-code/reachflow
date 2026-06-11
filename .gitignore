@@ -20,3 +20,11 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Local tooling
+.claude/
+
+# V2
+backups/
+*.dump
+*.sql.gz
