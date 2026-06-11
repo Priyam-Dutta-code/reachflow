@@ -1,0 +1,81 @@
+# ReachFlow V2 — production stack (SKELETON — finalized in Phase 1).
+#
+# Target topology (master plan Part II):
+#   cloudflared → web (Next.js standalone) / api (webhook path only)
+#   api / worker / beat → db (Postgres 16) + redis
+#   umami (optional analytics), kuma (optional uptime), backup (nightly pg_dump)
+#
+# No ports are published: all ingress arrives through the Cloudflare Tunnel
+# (outbound-only). The host firewall allows SSH (22) only.
+#
+# ⚠ Phase 1 wires the tunnel token + ingress rules and verifies this file on the
+#   Oracle VM. Until then, use compose.dev.yml locally.
+
+name: reachflow
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set in .env (Phase 1)}
+    depends_on:
+      - web
+      - api
+
+  web:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      API_INTERNAL_URL: http://api:8000
+      NEXT_PUBLIC_APP_URL: ${APP_URL:-}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://reachflow:${POSTGRES_PASSWORD:?set in .env}@db:5432/reachflow
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # worker / beat / umami / kuma / backup services land in Phases 1–2 alongside
+  # the real application images. Kept out of the skeleton so `config` stays valid.
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reachflow
+      POSTGRES_USER: reachflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reachflow -d reachflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:

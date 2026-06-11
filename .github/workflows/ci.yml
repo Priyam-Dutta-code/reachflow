@@ -1,0 +1,28 @@
+# Phase 0 sanity CI. Phase 11 replaces this with the full pipeline
+# (web: lint+tsc+build · api: ruff+pytest · main: SSH deploy with approval).
+name: ci
+
+on:
+  push:
+    branches: ["v2/**"]
+  pull_request:
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose files
+        run: |
+          docker compose -f compose.dev.yml config -q
+          # prod skeleton needs required env vars to interpolate
+          POSTGRES_PASSWORD=x CLOUDFLARE_TUNNEL_TOKEN=x docker compose -f compose.prod.yml config -q
+
+      - name: API stub imports
+        run: |
+          python3 -m pip install --quiet -r apps/api/requirements.txt
+          python3 -c "from apps.api.app.main import app; print('api stub ok')"
+
+      - name: Web stub syntax
+        run: node --check apps/web/server.mjs

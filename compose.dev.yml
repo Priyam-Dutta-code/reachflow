@@ -1,0 +1,70 @@
+# ReachFlow V2 — local development stack (Phase 0 skeleton).
+#
+# Usage:
+#   cp .env.example .env        # fill in values (defaults below work for dev)
+#   docker compose -f compose.dev.yml up --build
+#
+#   web  → http://localhost:3000          (stub until Phase 5)
+#   api  → http://localhost:8000/health   (stub until Phase 2)
+#   db   → localhost:5432 (reachflow / see POSTGRES_PASSWORD)
+#
+# Every image used here supports linux/arm64 (the production server is aarch64).
+
+name: reachflow-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reachflow
+      POSTGRES_USER: reachflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reachflow_dev}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # dev convenience only; never exposed in prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reachflow -d reachflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://reachflow:${POSTGRES_PASSWORD:-reachflow_dev}@db:5432/reachflow
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000" # dev convenience; prod keeps the api internal-only
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db_data:

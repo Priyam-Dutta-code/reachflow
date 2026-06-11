@@ -1,0 +1,6 @@
+# Phase 0 stub dependencies. Phase 2 replaces this with the full pinned set
+# (sqlalchemy, alembic, pydantic-settings, celery, argon2-cffi, slowapi, ...).
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+psycopg[binary]==3.2.6
+redis==5.2.1
