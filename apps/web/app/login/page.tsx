@@ -1,21 +1,18 @@
 "use client";
 
-/** Functional login (minimal). Phase 7 brings the full auth UX
- * (vertical-aware visuals, forgot-password page, inline validation). */
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
-import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/AuthProvider";
 
 function LoginForm() {
   const { login } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -32,13 +29,13 @@ function LoginForm() {
         <h1 className="mt-6 font-display text-2xl font-semibold text-ink">Log in</h1>
         <form
           className="mt-6 space-y-4"
+          noValidate
           onSubmit={async (event) => {
             event.preventDefault();
             setBusy(true);
             setError("");
             try {
-              await login(email, password);
-              toast("Welcome back.", "success");
+              await login(email.trim(), password);
               router.replace(searchParams.get("next") || "/dashboard");
             } catch (loginError) {
               setError(loginError instanceof Error ? loginError.message : "Login failed.");
@@ -47,7 +44,7 @@ function LoginForm() {
             }
           }}
         >
-          <Field label="Email" htmlFor="email" error={error || undefined}>
+          <Field label="Email" htmlFor="email">
             <Input
               id="email"
               type="email"
@@ -57,16 +54,21 @@ function LoginForm() {
               onChange={(event) => setEmail(event.target.value)}
             />
           </Field>
-          <Field label="Password" htmlFor="password">
-            <Input
+          <Field label="Password" htmlFor="password" error={error || undefined}>
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="current-password"
               required
               value={password}
+              aria-invalid={Boolean(error)}
               onChange={(event) => setPassword(event.target.value)}
             />
           </Field>
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/forgot-password" className="text-sm font-medium text-accent hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <Button type="submit" loading={busy} className="w-full">
             Log in
           </Button>

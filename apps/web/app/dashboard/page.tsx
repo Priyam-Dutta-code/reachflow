@@ -6,6 +6,7 @@ import { Target } from "lucide-react";
 import Link from "next/link";
 
 import { AppShell } from "@/components/AppShell";
+import { FirstRunChecklist } from "@/components/FirstRunChecklist";
 import { buttonClasses } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -52,6 +53,8 @@ export default function DashboardPage() {
           <Stat label="Emails sent" value={user.emails_sent} detail="all time" />
           <Stat label="Plan" value={user.plan_name} detail={user.email_verified ? "email verified" : "verify email to send"} />
         </div>
+
+        <FirstRunChecklist user={user} />
 
         <EmptyState
           icon={Target}

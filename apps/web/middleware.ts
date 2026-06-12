@@ -5,7 +5,7 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_ROUTES = ["/dashboard", "/leads", "/campaigns", "/analytics", "/settings"];
+const PROTECTED_ROUTES = ["/dashboard", "/leads", "/campaigns", "/analytics", "/settings", "/onboarding"];
 const AUTH_ROUTES = ["/login", "/signup"];
 const REFRESH_COOKIE = "rf_refresh";
 

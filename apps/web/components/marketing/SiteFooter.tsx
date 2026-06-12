@@ -4,6 +4,7 @@ import { SLUG_BY_VERTICAL } from "@/lib/marketing";
 import { VERTICAL_LIST } from "@/lib/verticals";
 
 const PRODUCT_LINKS = [
+  { label: "Live demo", href: "/demo" },
   { label: "Pricing", href: "/pricing" },
   { label: "Changelog", href: "/changelog" },
   { label: "Log in", href: "/login" },

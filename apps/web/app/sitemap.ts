@@ -6,7 +6,7 @@ const BASE = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const staticPages = ["", "/pricing", "/changelog", "/privacy", "/terms", "/acceptable-use"];
+  const staticPages = ["", "/demo", "/pricing", "/changelog", "/privacy", "/terms", "/acceptable-use"];
   const landers = Object.keys(VERTICAL_SLUGS).map((slug) => `/for/${slug}`);
 
   return [...staticPages, ...landers].map((path) => ({

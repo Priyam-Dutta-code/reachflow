@@ -51,12 +51,12 @@ export default function LandingPage() {
 
       <main>
         {/* hero */}
-        <section className="mx-auto w-full max-w-6xl px-4 pt-16 sm:px-6 sm:pt-24">
+        <section className="hero-backdrop mx-auto w-full max-w-6xl px-4 pt-16 sm:px-6 sm:pt-24">
           <div className="max-w-3xl">
             <h1 className="font-display text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-[3.4rem]">
               Find the right inboxes.
               <br />
-              Send emails that get answered.
+              Send emails that <span className="text-gradient-accent">get answered.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">
               One workspace for the whole outreach loop — discover leads from public sources, draft
@@ -76,7 +76,7 @@ export default function LandingPage() {
           </h2>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {HOW_IT_WORKS.map((item) => (
-              <Card key={item.step} className="p-6">
+              <Card key={item.step} className="card-hover p-6">
                 <span className="font-mono text-sm font-medium text-accent">{item.step}</span>
                 <h3 className="mt-3 font-display text-xl font-semibold text-ink">{item.title}</h3>
                 <p className="mt-2.5 text-sm leading-7 text-ink-soft">{item.copy}</p>
@@ -97,7 +97,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {CAPABILITIES.map((item) => (
-              <Card key={item.title} className="p-6">
+              <Card key={item.title} className="card-hover p-6">
                 <h3 className="font-display text-lg font-semibold text-ink">{item.title}</h3>
                 <p className="mt-2.5 text-sm leading-7 text-ink-soft">{item.copy}</p>
               </Card>

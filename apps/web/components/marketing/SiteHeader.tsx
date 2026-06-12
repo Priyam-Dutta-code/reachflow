@@ -14,6 +14,12 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2" aria-label="Site">
           <Link
+            href="/demo"
+            className="hidden rounded-control px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-ink sm:inline-flex"
+          >
+            Demo
+          </Link>
+          <Link
             href="/pricing"
             className="hidden rounded-control px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-ink sm:inline-flex"
           >
