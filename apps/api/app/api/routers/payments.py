@@ -301,6 +301,34 @@ def _upgrade_user(user: User, purchase_key: str, purchase_type: str, purchase: d
     logger.info("plan upgraded via %s", purchase_type, extra={"event": "payment_completed"})
 
 
+@router.get("/history")
+def payment_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Tenant-scoped payment history (Phase 8 Settings)."""
+    payments = (
+        db.query(Payment)
+        .filter(Payment.user_id == current_user.id)
+        .order_by(Payment.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    return [
+        {
+            "id": payment.id,
+            "amount": payment.amount,
+            "currency": payment.currency,
+            "plan": payment.plan,
+            "payment_type": payment.payment_type,
+            "status": payment.status,
+            "credits_added": payment.credits_added,
+            "created_at": str(payment.created_at) if payment.created_at else None,
+        }
+        for payment in payments
+    ]
+
+
 @router.get("/plans")
 def get_plans(vertical: str | None = Query(default=None)):
     selected_vertical = normalize_vertical(vertical)

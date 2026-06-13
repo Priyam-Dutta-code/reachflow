@@ -1,15 +1,51 @@
-"""Email preview + reply checks — PORTED V1 contracts."""
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+"""Email preview, send log, and reply checks — PORTED V1 contracts + Phase 8 log."""
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.rate_limit import enforce_rate_limit
-from app.db.models import Lead, User
+from app.db.models import EmailLog, Lead, User
 from app.db.session import get_db, get_session_factory
 from app.services.verticals import entitlements_for_user
 
 router = APIRouter()
+
+
+@router.get("/log")
+def email_log(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Tenant-scoped send history (Phase 8: analytics CSV export + activity)."""
+    q = db.query(EmailLog).filter(EmailLog.user_id == current_user.id)
+    total = q.count()
+    logs = (
+        q.order_by(EmailLog.sent_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    return {
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "logs": [
+            {
+                "id": log.id,
+                "to_email": log.to_email,
+                "subject": log.subject,
+                "status": log.status,
+                "is_followup": log.is_followup,
+                "campaign_id": log.campaign_id,
+                "lead_id": log.lead_id,
+                "sent_at": str(log.sent_at) if log.sent_at else None,
+            }
+            for log in logs
+        ],
+    }
 
 
 class PreviewRequest(BaseModel):

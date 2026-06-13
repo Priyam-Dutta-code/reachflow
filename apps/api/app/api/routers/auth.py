@@ -11,6 +11,7 @@ import logging
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -262,6 +263,76 @@ def change_password(
     auth_service.revoke_all_sessions(db, current_user.id, except_token=current_session_token)
     background.add_task(mailer.send_password_changed_notice, current_user.email, current_user.name or "")
     return {"message": "Password changed. Other sessions were signed out."}
+
+
+# ── Integrations (Phase 8) ────────────────────────────────────────────
+
+@router.post("/test-integrations")
+def test_integrations(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Live checks for the user's stored Gmail/Groq credentials (Settings)."""
+    enforce_rate_limit(request, "integration_test", limit=4, window_seconds=300, identifier=current_user.id)
+    import smtplib
+
+    from app.core.security import get_secret_manager
+
+    sm = get_secret_manager()
+    result: dict = {
+        "gmail": {"connected": bool(current_user.gmail_password), "ok": False, "error": None},
+        "groq": {"connected": bool(current_user.groq_api_key), "ok": False, "error": None},
+    }
+
+    if current_user.gmail_password:
+        try:
+            password = sm.decrypt(current_user.gmail_password)
+            server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
+            server.starttls()
+            server.login(current_user.sender_email or current_user.email, password)
+            server.quit()
+            result["gmail"]["ok"] = True
+        except Exception as exc:
+            result["gmail"]["error"] = type(exc).__name__
+
+    if current_user.groq_api_key:
+        try:
+            from groq import Groq
+
+            client = Groq(api_key=sm.decrypt(current_user.groq_api_key))
+            client.models.list()
+            result["groq"]["ok"] = True
+        except Exception as exc:
+            result["groq"]["error"] = type(exc).__name__
+
+    return result
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+
+
+@router.delete("/account")
+def delete_account(
+    body: DeleteAccountRequest,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Gated full deletion (Phase 8 Settings security section)."""
+    if not verify_password(current_user.password_hash, body.password):
+        raise HTTPException(401, "Password is incorrect.")
+
+    from app.db.models import AuthSession, EmailLog, Job, OneTimeToken, Payment, Unsubscribe
+
+    user_id = current_user.id
+    for model in (EmailLog, Job, Payment, AuthSession, OneTimeToken, Unsubscribe):
+        db.query(model).filter(model.user_id == user_id).delete(synchronize_session=False)
+    db.delete(current_user)  # cascades leads + campaigns via relationships
+    db.commit()
+    _clear_refresh_cookie(response)
+    logger.info("account deleted", extra={"event": "account_deleted"})
+    return {"message": "Your account and all associated data were deleted."}
 
 
 # ── Profile contract (PORTED from V1) ─────────────────────────────────

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.rate_limit import enforce_rate_limit
 from app.core.settings import get_settings
-from app.db.models import Campaign, Job, JobStatus, Lead, LeadStatus, User
+from app.db.models import Campaign, Job, JobStatus, Lead, LeadSource, LeadStatus, User
 from app.db.session import get_db
 from app.services.campaign_service import sync_campaign_stats
 from app.services.jobs import create_lead_gen_job, process_lead_gen_job
@@ -186,6 +186,8 @@ def list_leads(
     per_page: int = Query(default=50, ge=1, le=100),
     status: LeadStatus | None = None,
     campaign_id: int | None = None,
+    source: LeadSource | None = None,
+    q_text: str | None = Query(default=None, alias="q", max_length=120),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -194,6 +196,15 @@ def list_leads(
         q = q.filter(Lead.status == status)
     if campaign_id is not None:
         q = q.filter(Lead.campaign_id == campaign_id)
+    if source:
+        q = q.filter(Lead.source == source)
+    if q_text:
+        needle = f"%{q_text.strip()}%"
+        q = q.filter(
+            (Lead.name.ilike(needle))
+            | (Lead.company.ilike(needle))
+            | (Lead.email.ilike(needle))
+        )
 
     total = q.count()
     leads = (

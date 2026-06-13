@@ -70,12 +70,15 @@ async function proxyRequest(request: NextRequest, path: string[]) {
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const body = hasBody ? await request.text() : undefined;
 
+  // "follow" matters: Next normalizes away trailing slashes, FastAPI 307s
+  // them back — the proxy must resolve that hop server-side, or the browser
+  // would chase the redirect straight to the internal API host.
   const upstream = await fetch(targetUrl, {
     method: request.method,
     headers,
     body,
     cache: "no-store",
-    redirect: "manual",
+    redirect: "follow",
   });
 
   const responseHeaders = new Headers(upstream.headers);
