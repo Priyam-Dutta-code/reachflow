@@ -30,3 +30,4 @@ backups/
 *.sql.gz
 apps/api/dev_*.db
 apps/api/dev_*.log
+reachflow-*.csv
