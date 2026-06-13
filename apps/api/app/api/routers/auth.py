@@ -323,10 +323,18 @@ def delete_account(
     if not verify_password(current_user.password_hash, body.password):
         raise HTTPException(401, "Password is incorrect.")
 
-    from app.db.models import AuthSession, EmailLog, Job, OneTimeToken, Payment, Unsubscribe
+    from app.db.models import (
+        AuthSession,
+        EmailLog,
+        Feedback,
+        Job,
+        OneTimeToken,
+        Payment,
+        Unsubscribe,
+    )
 
     user_id = current_user.id
-    for model in (EmailLog, Job, Payment, AuthSession, OneTimeToken, Unsubscribe):
+    for model in (EmailLog, Job, Payment, AuthSession, OneTimeToken, Unsubscribe, Feedback):
         db.query(model).filter(model.user_id == user_id).delete(synchronize_session=False)
     db.delete(current_user)  # cascades leads + campaigns via relationships
     db.commit()

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     mail_from: str = ""
+    alert_email: str = ""  # operator inbox for feedback + ops alerts
 
     # ── Integrations ────────────────────────────────────────────────
     groq_api_key: str = ""

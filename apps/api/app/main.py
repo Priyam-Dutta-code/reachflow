@@ -13,6 +13,7 @@ from app.api.routers import (
     auth,
     campaigns,
     emails,
+    growth,
     internal,
     leads,
     payments,
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
     app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
     app.include_router(unsubscribe.router, prefix="/api", tags=["Compliance"])
+    app.include_router(growth.router, prefix="/api", tags=["Growth"])
 
     return app
 

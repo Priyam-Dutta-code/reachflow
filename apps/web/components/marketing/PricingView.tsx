@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/Card";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
+import { track } from "@/lib/analytics";
 import { ApiError, apiFetch } from "@/lib/auth-client";
 import { useAuth } from "@/lib/AuthProvider";
 import { VERTICAL_LIST, getVerticalConfig, normalizeVertical, type VerticalId } from "@/lib/verticals";
@@ -119,6 +120,7 @@ export function PricingView() {
         router.push("/dashboard");
         return;
       }
+      track("checkout_start", { plan: plan.id, amount: plan.amount });
       const order = await apiFetch<{ payment_session_id: string; cashfree_env: string }>(
         "/api/payments/create-order",
         { method: "POST", body: JSON.stringify({ plan: plan.id }) }

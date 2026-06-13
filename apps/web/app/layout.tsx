@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthProvider";
 import { ToastProvider } from "@/components/ui/Toast";
+
+const UMAMI_ID = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+const UMAMI_SRC = process.env.NEXT_PUBLIC_UMAMI_SRC || "https://cloud.umami.is/script.js";
 
 const display = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -44,6 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${display.variable} ${body.variable} ${mono.variable}`}>
+        {/* Self-hosted privacy-first analytics — only loads when configured */}
+        {UMAMI_ID && (
+          <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} strategy="afterInteractive" />
+        )}
         <ToastProvider>
           <AuthProvider>{children}</AuthProvider>
         </ToastProvider>

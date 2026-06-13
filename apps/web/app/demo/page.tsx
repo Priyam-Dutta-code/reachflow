@@ -20,6 +20,7 @@ import { Table, type Column } from "@/components/ui/Table";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
+import { track } from "@/lib/analytics";
 import { DEMO, type DemoLead } from "@/lib/demo-fixtures";
 import { VERTICAL_LIST, getVerticalConfig, type VerticalId } from "@/lib/verticals";
 
@@ -36,6 +37,7 @@ export default function DemoPage() {
 
   function demoToast() {
     toast("Demo data — start free to run this live.", "info");
+    track("demo_interaction", { vertical });
   }
 
   const columns: Column<DemoLead>[] = [

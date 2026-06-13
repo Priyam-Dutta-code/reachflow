@@ -16,6 +16,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { ProgressMeter } from "@/components/ui/ProgressMeter";
 import { cn } from "@/components/ui/cn";
 import { useAuth } from "@/lib/AuthProvider";
@@ -195,6 +196,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
       </div>
+
+      <FeedbackWidget />
     </div>
   );
 }

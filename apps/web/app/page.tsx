@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { NewsletterRow } from "@/components/marketing/NewsletterRow";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { VerticalHero } from "@/components/marketing/VerticalHero";
@@ -132,8 +133,13 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* final CTA */}
+        {/* newsletter capture */}
         <section className="mx-auto w-full max-w-6xl px-4 pt-24 sm:px-6 sm:pt-32">
+          <NewsletterRow />
+        </section>
+
+        {/* final CTA */}
+        <section className="mx-auto w-full max-w-6xl px-4 pt-12 sm:px-6 sm:pt-16">
           <Card className="flex flex-col items-start gap-6 p-8 sm:p-12 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">
               <h2 className="font-display text-3xl font-semibold tracking-tight text-ink">

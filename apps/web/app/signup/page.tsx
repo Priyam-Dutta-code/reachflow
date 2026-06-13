@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { track } from "@/lib/analytics";
 import { useAuth } from "@/lib/AuthProvider";
 import { normalizeVertical, type VerticalId } from "@/lib/verticals";
 
@@ -48,6 +49,7 @@ function SignupForm() {
     setBusy(true);
     try {
       await register({ name: name.trim(), email: email.trim(), password, vertical });
+      track("signup", { vertical });
       router.replace("/onboarding");
     } catch (registerError) {
       const message = registerError instanceof Error ? registerError.message : "Signup failed.";

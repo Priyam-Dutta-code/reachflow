@@ -16,6 +16,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { ProgressMeter } from "@/components/ui/ProgressMeter";
 import { StatusPill } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
+import { track } from "@/lib/analytics";
 import { apiFetch } from "@/lib/auth-client";
 import { useAuth } from "@/lib/AuthProvider";
 import { getVerticalConfig, normalizeVertical, type VerticalId } from "@/lib/verticals";
@@ -156,6 +157,7 @@ function OnboardingInner() {
     try {
       await apiFetch("/api/auth/profile", { method: "PATCH", body: JSON.stringify(payload) });
       await reload();
+      track("onboarding_step", { step: nextStep });
       setStep(nextStep);
     } catch (saveError) {
       toast(saveError instanceof Error ? saveError.message : "Could not save.", "error");
@@ -180,6 +182,7 @@ function OnboardingInner() {
       setJobId(started.job_id);
       setJobProgress(5);
       setJobMessage("");
+      track("first_generate", { vertical });
     } catch (startError) {
       toast(startError instanceof Error ? startError.message : "Could not start.", "error");
     } finally {

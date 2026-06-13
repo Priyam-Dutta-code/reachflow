@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ProgressMeter } from "@/components/ui/ProgressMeter";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { track } from "@/lib/analytics";
 import { ApiError, apiFetch } from "@/lib/auth-client";
 import { useAuth } from "@/lib/AuthProvider";
 
@@ -137,6 +138,7 @@ export default function CampaignsPage() {
         method: "POST",
       });
       toast(`Batch started — ${result.eligible_leads} eligible lead${result.eligible_leads === 1 ? "" : "s"}.`, "success");
+      track("campaign_send", { eligible: result.eligible_leads });
       await load();
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {

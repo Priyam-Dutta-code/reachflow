@@ -19,7 +19,9 @@ import { ProgressMeter } from "@/components/ui/ProgressMeter";
 import { SkeletonRow } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
 import { useToast } from "@/components/ui/Toast";
+import { UpgradeNudge } from "@/components/UpgradeNudge";
 import { cn } from "@/components/ui/cn";
+import { track } from "@/lib/analytics";
 import { apiFetch } from "@/lib/auth-client";
 import { useAuth } from "@/lib/AuthProvider";
 import { getVerticalConfig } from "@/lib/verticals";
@@ -205,6 +207,7 @@ export default function LeadStudioPage() {
         body: JSON.stringify({ lead_id: lead.id }),
       });
       setPreview(draft);
+      track("lead_preview");
     } catch (error) {
       toast(error instanceof Error ? error.message : "Preview failed.", "error");
     } finally {
@@ -331,6 +334,13 @@ export default function LeadStudioPage() {
           title={vertical.leadTitle}
           description={vertical.leadSummary}
         />
+
+        {remainingQuota <= 0 && (
+          <UpgradeNudge
+            vertical={user.vertical}
+            reason="You've used your full lead quota for this cycle. Upgrade to keep generating."
+          />
+        )}
 
         {/* generation panel */}
         <Card className="p-5">

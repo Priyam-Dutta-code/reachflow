@@ -76,6 +76,24 @@ ignore this email — your password is unchanged.
     return _send(to_email, "Reset your ReachFlow password", body)
 
 
+def send_feedback_notice(from_email: str, message: str, page: str) -> bool:
+    """Forward in-app feedback to the operator (Phase 9). To self = ALERT_EMAIL
+    or MAIL_FROM. Disabled-safe; logged in dev."""
+    settings = get_settings()
+    to = settings.alert_email or settings.mail_from or settings.smtp_user
+    if not to:
+        logger.info("[dev] feedback from %s on %s: %s", from_email or "anon", page, message[:200])
+        return False
+    body = f"""New ReachFlow feedback.
+
+From: {from_email or "anonymous"}
+Page: {page or "unknown"}
+
+{message}
+"""
+    return _send(to, "ReachFlow feedback", body)
+
+
 def send_password_changed_notice(to_email: str, name: str) -> bool:
     settings = get_settings()
     body = f"""Hi {name or "there"},
