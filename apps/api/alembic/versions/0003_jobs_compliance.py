@@ -16,6 +16,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    # Revision 0001 builds the schema via metadata.create_all over the FULL model
+    # metadata. On PostgreSQL that emits CREATE TYPE for every named enum bound to
+    # the metadata — including "jobstatus", whose table is created here in 0003 —
+    # so the type already exists by now and create_table would fail to re-create
+    # it. Drop the leaked type first (nothing references it yet) so create_table
+    # owns it cleanly. No-op on SQLite (enums are VARCHAR+CHECK there).
+    if bind.dialect.name == "postgresql":
+        op.execute("DROP TYPE IF EXISTS jobstatus")
+
     op.create_table(
         "jobs",
         sa.Column("id", sa.String(), primary_key=True),
