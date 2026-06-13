@@ -407,7 +407,7 @@ No console errors/CLS · skeleton + designed empty state · friendly error handl
 3. "Continue with Google" OAuth (**later**, after launch).
 4. Dark mode (**later**; light-only first).
 5. Pricing numbers per plan/vertical (current backend values vs revised).
-6. Migrate V1 users vs fresh start (**fresh start if <10 real users**).
+6. Migrate V1 users vs fresh start — **DECIDED: fresh start** (D-003, 2026-06-13; see docs/DECISIONS.md).
 7. Founder byline on site ("built by…") (**README yes, product footer optional**).
 8. Chart approach: Recharts vs hand-rolled SVG (**hand-rolled on tokens** — lighter).
 9. Keep selenium/LinkedIn source available behind flag (**yes, off by default**).

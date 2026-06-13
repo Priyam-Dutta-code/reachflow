@@ -190,4 +190,5 @@ docker compose -f compose.prod.yml logs cloudflared --tail 20
 In compose mode a real Celery worker + beat replace the cron-tick Action, and
 the DB is the in-compose Postgres (back it up with the same `backup-now.sh`,
 pointing `DATABASE_URL` at it). This path is the 30-minute portability drill:
-fresh host + repo + restored dump → live.
+fresh host + repo + restored dump → live. Full step-by-step + the drill log live
+in [`CUTOVER.md`](CUTOVER.md#portability-drill-phase-12-acceptance).

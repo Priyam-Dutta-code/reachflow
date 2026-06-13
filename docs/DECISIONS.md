@@ -33,11 +33,29 @@ runbooks are kept in `docs/` as the optional self-host path.
 machine. Local dev = `docker compose -f compose.dev.yml up` (Postgres 16 +
 Redis + api + worker + web). Tests also run without Docker via SQLite.
 
+## D-003 · 2026-06-13 · Cutover: fresh start, no V1 data migration
+
+**Decision (Priyam):** V2 launches with a **clean database**. V1 production
+data (`reachflow-indol.vercel.app`) is **not** imported — anyone who signed up
+on V1 simply re-registers on V2. This is the master plan's default for a V1
+real-user count of roughly <10 (Appendix E #6).
+
+**What this avoids:** export/import scripts, ID-collision risk, the
+password-reset-on-first-login migration path, and a fragile dual-schema
+reconciliation. The V2 schema is correct by construction (Alembic on a new
+Supabase DB).
+
+**Safety net (not skipped):** before decommissioning V1, take a **final
+encrypted export** of the V1 database and archive it offline — reuse
+`infra/backup-now.sh` pointed at V1's `DATABASE_URL` (same
+`pg_dump|gzip|openssl` format `restore.sh` reads). Fresh start ≠ throwing data
+away; it means we don't *import* it. See `docs/CUTOVER.md`.
+
 ## Open decisions (Appendix E — defaults in bold)
 
 - Custom domain later for credibility/SEO (**recommended once selling**; free
   `vercel.app` subdomain until then).
 - Google OAuth (**later**). Dark mode (**later**). Charts (**hand-rolled SVG**).
 - Pricing numbers per plan/vertical (current `verticals.py` values stand until revised).
-- Migrate V1 users vs fresh start (**fresh start if <10 real users**) — Phase 12.
+- ~~Migrate V1 users vs fresh start~~ → **DECIDED: fresh start** (D-003, 2026-06-13).
 - Selenium/LinkedIn source behind flag (**yes, off by default**).
