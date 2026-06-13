@@ -141,3 +141,46 @@ allow-list + preview regex, CSP, and rate limits on the sensitive endpoints. No 
 - Charting library (Recharts?) — Phase 9.
 - Exact pricing/quotas per tier — Phase 4/10 (current numbers are placeholders in `verticals.py`).
 - Keep live email + payments disabled-by-default on the public deploy — recommended yes.
+
+---
+
+# Part 2 — Final Extraordinary-bar audit (Phase 13)
+
+> The Phase 0 baseline above was V1. This part audits the rebuilt **V2** against
+> the acceptance bar in Part I of the master plan, **as amended by D-001** (old
+> stack) — see `docs/PLAN_AMENDMENT_OLD_STACK.md` for the honest restatement of
+> the cold-start line. Evidence is cited, not asserted. Items that can only be
+> proven on the deployed stack or need Docker are marked **deploy-gated** /
+> **drill-gated** rather than ticked — per the honesty rule.
+
+| # | Acceptance criterion (amended) | Status | Evidence |
+|---|---|---|---|
+| 1 | Marketing Lighthouse ≥95 perf / ≥95 a11y; app pages ≥90 | ✅ **met locally** | Marketing (prod build, Edge headless): perf **99** / a11y **100** / BP 96 / SEO 100. App pages: perf **94** local, a11y **100**. `docs/QUALITY.md`. Authoritative re-measure happens on the deployed CDN (env-bound locally). |
+| 2 | API stays warm; first response after deploy/restart 30–60 s; steady-state <1 s (D-001 restatement of "zero cold starts") | ⏳ **deploy-gated** | Mechanism in place: one always-on Render service + UptimeRobot 5-min `/health` keep-alive (also prevents Supabase 7-day pause). Verified on deploy per `CUTOVER.md` checklist. The original "zero cold starts" was an Oracle-VM promise; D-001 trades it knowingly. |
+| 3 | Flawless 360px → 1536px+; tables→cards on mobile; taps ≥44px | ✅ **met** | Responsive sweep at 360/390/768/1024/1280/1536 (Phase 10); tables collapse to cards; live walkthroughs at 360 + 1280 clean. `docs/QUALITY.md`. |
+| 4 | Zero console errors; every button real; skeleton + designed empty state; friendly API-failure messages | ✅ **met** | Verified live across all five app surfaces + marketing (Phases 6–10): zero console errors, toast error system, skeletons + empty states, no fabricated data. |
+| 5 | Signup → first generated leads < 2 min | ✅ **met** | Live E2E (Phase 7): real lead-gen imported real open-web leads in under the 2-min target; quota math exact. |
+| 6 | A stranger can clone + run the whole platform with `docker compose up` | ⏳ **drill-gated** | `compose.prod.yml` + `compose.dev.yml` maintained; portability drill written as a runnable, recorded checklist (`docs/CUTOVER.md`). Timed run blocked locally: this box has Docker Desktop but **no WSL** (`machine-no-docker`). Encrypt/decrypt/gzip half of restore already verified byte-for-byte. |
+| 7 | Monthly bill ₹0 (plus optional domain) | ✅ **met by design** | Vercel + Render + Supabase + GitHub Actions + UptimeRobot + Groq + Umami Cloud — all free tiers (D-001); no required paid service. Optional spend = a custom domain only. |
+| 8 | Not one fabricated number, testimonial, or logo anywhere | ✅ **met** | Honesty rule enforced every phase; no invented metrics/logos/testimonials in any surface or doc. Real numbers appear only once they exist. |
+
+**Engineering evidence backing the bar:** custom auth (argon2id, HS256 JWT,
+rotating refresh w/ family reuse-revocation); Fernet-encrypted secrets; HMAC
+Cashfree webhook; tenant-scoped queries everywhere; compliance layer
+(unsubscribe/suppression/footer/send caps); 4 Alembic migrations; **79 API tests
+green**, `ruff check app tests` clean; CI gate (ruff+pytest+migrations / web
+typecheck+build); nightly encrypted backups + restore tooling; full RUNBOOK +
+CUTOVER + setup docs.
+
+**Open, honestly:** items 2 and 6 are verifiable only on a real deploy / Docker
+host — both have ready checklists and mechanisms, neither is hand-waved. Nothing
+has been pushed to GitHub yet (awaiting Priyam's approval), so the deployed-stack
+measurements (Lighthouse on CDN, cold-start timing, the timed portability drill)
+are the post-launch closeout.
+
+## Verdict
+
+V2 meets every criterion that can be proven without the live deploy, and has a
+concrete, written path to close the remaining three the moment the stack is up
+and a Docker host (WSL) is available. The V1→V2 arc — from the 15 issues above
+to this bar — is the story this repo tells.

@@ -1,8 +1,8 @@
 # Environment files — NEVER commit these
 .env
 .env.local
-backend/.env
-frontend/.env.local
+apps/api/.env
+apps/web/.env.local
 
 # Python
 __pycache__/

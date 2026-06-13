@@ -1,4 +1,7 @@
-# ReachFlow — API Map
+# ReachFlow — API Map (V1, historical)
+
+> ⚠️ **Superseded.** This maps the **V1** Supabase-auth API. The current V2 API
+> reference is [`API.md`](API.md). Kept only for the salvage/orientation record.
 
 > Generated during Phase 0 orientation. Source of truth: `backend/main.py` + `backend/routers/*`.
 > All paths are mounted under the FastAPI app. The frontend never calls the backend directly —
