@@ -1,0 +1,33 @@
+# Scheduled background work for the Render deployment (D-001 tick model).
+# Render free has no Celery worker, so this Action drives due campaign sends,
+# follow-ups, and stale lead-gen jobs by calling the signed tick endpoint.
+# The endpoint is bounded + idempotent (app/services/jobs.process_due_work).
+#
+# [HUMAN: Priyam] set repo secrets: APP_URL (e.g. https://reachflow.onrender.com
+# or the app domain) and CRON_SECRET (matches the API's CRON_SECRET env).
+name: cron-tick
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 minutes (UTC)
+  workflow_dispatch: {} # manual trigger for testing
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fire the cron tick
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL / CRON_SECRET not set — skipping (configure repo secrets)."
+            exit 0
+          fi
+          code=$(curl -fsS -o /tmp/tick.json -w '%{http_code}' \
+            -X POST "$APP_URL/internal/cron/tick" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            --max-time 60 || true)
+          echo "HTTP $code"; cat /tmp/tick.json 2>/dev/null || true
+          test "$code" = "200"
