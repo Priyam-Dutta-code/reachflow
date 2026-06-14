@@ -44,11 +44,9 @@ export default async function VerticalLanderPage({ params }: { params: Promise<P
     <div className="bg-bg text-ink">
       <SiteHeader />
       <main>
-        <section className="mx-auto w-full max-w-6xl px-4 pt-16 sm:px-6 sm:pt-24">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent-strong">
-            For {vertical.audience.toLowerCase()}
-          </p>
-          <h1 className="mt-3 max-w-3xl font-display text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl">
+        <section className="hero-backdrop mx-auto w-full max-w-6xl px-4 pt-16 sm:px-6 sm:pt-24">
+          <p className="eyebrow">For {vertical.audience.toLowerCase()}</p>
+          <h1 className="mt-4 max-w-3xl font-display text-5xl font-semibold leading-[1.04] tracking-[-0.02em] text-ink sm:text-[3.6rem]">
             {vertical.landingHeadline}
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">{vertical.landingSummary}</p>

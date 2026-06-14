@@ -16,7 +16,7 @@ export default function PricingPage() {
   return (
     <div className="bg-bg text-ink">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-6xl px-4 pb-8 pt-12 sm:px-6 sm:pt-16">
+      <main className="hero-backdrop mx-auto w-full max-w-6xl px-4 pb-8 pt-12 sm:px-6 sm:pt-16">
         <Suspense>
           <PricingView />
         </Suspense>

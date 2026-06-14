@@ -146,7 +146,8 @@ export function PricingView() {
   return (
     <div>
       <div className="max-w-3xl">
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+        <p className="eyebrow">Pricing · {verticalConfig.label}</p>
+        <h1 className="mt-3 font-display text-5xl font-semibold tracking-[-0.02em] text-ink sm:text-[3.6rem]">
           {verticalConfig.pricingHeadline}
         </h1>
         <p className="mt-4 text-lg leading-8 text-muted">{verticalConfig.pricingSummary}</p>
