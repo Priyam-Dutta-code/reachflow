@@ -23,7 +23,7 @@ export function SiteFooter() {
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.2fr_1fr_1fr_1fr]">
         <div className="max-w-xs">
           <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-control bg-accent font-display text-sm font-bold text-white">
+            <span className="grid h-8 w-8 place-items-center rounded-control bg-accent font-display text-sm font-bold text-bg">
               R
             </span>
             <span className="font-display text-lg font-semibold text-ink">ReachFlow</span>

@@ -7,7 +7,7 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-white hover:bg-accent-strong",
+  primary: "bg-accent text-bg hover:bg-accent-strong",
   secondary: "border border-line bg-surface text-ink hover:border-accent/40 hover:bg-accent-tint",
   ghost: "text-ink-soft hover:bg-accent-tint hover:text-ink",
   danger: "border border-danger/20 bg-danger-bg text-danger hover:border-danger/40",

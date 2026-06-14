@@ -46,8 +46,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-theme="dark" style={{ colorScheme: "dark" }} suppressHydrationWarning>
       <body className={`${display.variable} ${body.variable} ${mono.variable}`}>
+        {/* Apply the saved theme before paint to avoid a flash (default: dark) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t='dark';var e=document.documentElement;e.setAttribute('data-theme',t);e.style.colorScheme=t;}catch(_){}})();",
+          }}
+        />
         {/* Self-hosted privacy-first analytics — only loads when configured */}
         {UMAMI_ID && (
           <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} strategy="afterInteractive" />

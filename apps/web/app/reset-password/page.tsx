@@ -39,7 +39,7 @@ function ResetPasswordForm() {
             <div className="rounded-card border border-success/25 bg-success-bg px-4 py-4 text-sm leading-6 text-success">
               Password updated and all sessions signed out. Log in with your new password.
             </div>
-            <Link href="/login" className="inline-flex h-11 w-full items-center justify-center rounded-control bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-strong">
+            <Link href="/login" className="inline-flex h-11 w-full items-center justify-center rounded-control bg-accent px-5 text-sm font-semibold text-bg hover:bg-accent-strong">
               Go to login
             </Link>
           </div>

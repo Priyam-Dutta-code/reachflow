@@ -45,7 +45,7 @@ function Stepper({ current }: { current: number }) {
               className={
                 "grid h-7 w-7 place-items-center rounded-full text-xs font-semibold " +
                 (stepState === "done"
-                  ? "bg-accent text-white"
+                  ? "bg-accent text-bg"
                   : stepState === "active"
                     ? "bg-accent-tint text-accent-strong"
                     : "bg-bg text-muted")

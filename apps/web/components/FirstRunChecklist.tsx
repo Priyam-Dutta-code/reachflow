@@ -72,7 +72,7 @@ export function FirstRunChecklist({ user }: { user: ApiUser }) {
                 <span
                   className={cn(
                     "grid h-6 w-6 shrink-0 place-items-center rounded-full",
-                    complete ? "bg-success text-white" : "border border-line text-transparent"
+                    complete ? "bg-success text-bg" : "border border-line text-transparent"
                   )}
                   aria-hidden="true"
                 >

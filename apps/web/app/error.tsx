@@ -20,7 +20,7 @@ export default function RootError({
         )}
         <button
           onClick={reset}
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-control bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong"
+          className="mt-6 inline-flex h-11 items-center justify-center rounded-control bg-accent px-5 text-sm font-semibold text-bg transition-colors hover:bg-accent-strong"
         >
           Try again
         </button>

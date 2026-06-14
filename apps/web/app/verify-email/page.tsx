@@ -59,7 +59,7 @@ function VerifyEmailInner() {
             </div>
             <Link
               href={user ? "/dashboard" : "/login"}
-              className="inline-flex h-11 w-full items-center justify-center rounded-control bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-strong"
+              className="inline-flex h-11 w-full items-center justify-center rounded-control bg-accent px-5 text-sm font-semibold text-bg hover:bg-accent-strong"
             >
               {user ? "Back to your workspace" : "Log in"}
             </Link>

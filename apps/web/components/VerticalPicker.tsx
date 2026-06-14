@@ -50,7 +50,7 @@ export function VerticalPicker({
               <span
                 className={cn(
                   "grid h-8 w-8 shrink-0 place-items-center rounded-control",
-                  selected ? "bg-accent text-white" : "bg-bg text-ink-soft"
+                  selected ? "bg-accent text-bg" : "bg-bg text-ink-soft"
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />

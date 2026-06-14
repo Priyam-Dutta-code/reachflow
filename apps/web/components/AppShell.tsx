@@ -32,7 +32,7 @@ const NAV = [
 function Wordmark() {
   return (
     <Link href="/" className="flex items-center gap-2" aria-label="ReachFlow home">
-      <span className="grid h-8 w-8 place-items-center rounded-control bg-accent font-display text-sm font-bold text-white">
+      <span className="grid h-8 w-8 place-items-center rounded-control bg-accent font-display text-sm font-bold text-bg">
         R
       </span>
       <span className="font-display text-[17px] font-semibold tracking-tight text-ink">ReachFlow</span>
