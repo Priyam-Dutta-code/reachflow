@@ -120,12 +120,23 @@
 }
 
 /* ── marketing polish ── */
+/* layered aurora (mint + cyan wash) over a faint dot grid — premium depth */
 .hero-backdrop {
   background-image:
-    radial-gradient(ellipse 70% 50% at 75% -10%, rgb(31 203 159 / 0.16), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 0% 0%, rgb(77 230 192 / 0.07), transparent 55%),
+    radial-gradient(ellipse 58% 44% at 82% -6%, rgb(31 203 159 / 0.22), transparent 60%),
+    radial-gradient(ellipse 52% 40% at 6% 2%, rgb(34 211 238 / 0.09), transparent 55%),
+    radial-gradient(ellipse 92% 55% at 50% -24%, rgb(77 230 192 / 0.05), transparent 70%),
     radial-gradient(circle, rgb(255 255 255 / 0.045) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 26px 26px;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 26px 26px;
+}
+
+/* small uppercase label that sits above section headings (Stripe-ish rhythm) */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent);
 }
 html[data-theme="light"] .hero-backdrop {
   background-image:

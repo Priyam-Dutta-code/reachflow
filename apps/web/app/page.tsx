@@ -54,12 +54,16 @@ export default function LandingPage() {
         {/* hero */}
         <section className="hero-backdrop mx-auto w-full max-w-6xl px-4 pt-16 sm:px-6 sm:pt-24">
           <div className="max-w-3xl">
-            <h1 className="font-display text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-[3.4rem]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent-tint px-3.5 py-1.5 text-xs font-medium text-accent-strong">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
+              Five workflows · one workspace
+            </span>
+            <h1 className="mt-6 font-display text-5xl font-semibold leading-[1.02] tracking-[-0.02em] text-ink sm:text-[4rem] lg:text-[4.6rem]">
               Find the right inboxes.
               <br />
               Send emails that <span className="text-gradient-accent">get answered.</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
               One workspace for the whole outreach loop — discover leads from public sources, draft
               emails that sound like you, and run focused campaigns. Built for five workflows: job
               search, recruiting, agencies, business growth, and partnerships.
@@ -72,8 +76,9 @@ export default function LandingPage() {
 
         {/* how it works */}
         <section className="mx-auto w-full max-w-6xl px-4 pt-24 sm:px-6 sm:pt-32" aria-labelledby="how-heading">
-          <h2 id="how-heading" className="font-display text-3xl font-semibold tracking-tight text-ink">
-            How it works
+          <p className="eyebrow">How it works</p>
+          <h2 id="how-heading" className="mt-3 font-display text-3xl font-semibold tracking-tight text-ink">
+            From a cold list to a sent campaign
           </h2>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {HOW_IT_WORKS.map((item) => (
@@ -89,8 +94,9 @@ export default function LandingPage() {
         {/* why reachflow — honest capabilities */}
         <section className="mx-auto w-full max-w-6xl px-4 pt-24 sm:px-6 sm:pt-32" aria-labelledby="why-heading">
           <div className="max-w-2xl">
-            <h2 id="why-heading" className="font-display text-3xl font-semibold tracking-tight text-ink">
-              Why ReachFlow
+            <p className="eyebrow">Why ReachFlow</p>
+            <h2 id="why-heading" className="mt-3 font-display text-3xl font-semibold tracking-tight text-ink">
+              What it actually does
             </h2>
             <p className="mt-3 text-[15px] leading-7 text-muted">
               No invented numbers, no fake logos — just what the product actually does.
